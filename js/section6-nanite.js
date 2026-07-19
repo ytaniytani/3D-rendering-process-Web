@@ -38,6 +38,29 @@ export function initSection6() {
     return g;
   });
 
+  // 網の目（ワイヤーフレーム）: 連続LODで密度が変わるのを見せる
+  const wireMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35 });
+  const lodWires = lodGeoms.map((geo) => {
+    const w = new THREE.LineSegments(new THREE.WireframeGeometry(geo), wireMat);
+    w.visible = false;
+    group.add(w);
+    return w;
+  });
+  let showWire = true;
+
+  // 従来LOD比較用の第2の球（2段階だけ・閾値でパッと切り替わる）
+  const compareGroup = new THREE.Group();
+  compareGroup.position.set(3.2, 0, 0);
+  compareGroup.visible = false;
+  scene.add(compareGroup);
+  const cmpCoarse = new THREE.Mesh(lodGeoms[0].clone(), new THREE.MeshStandardMaterial({ color: 0xc7a15f, flatShading: true }));
+  const cmpFine = new THREE.Mesh(lodGeoms[2].clone(), new THREE.MeshStandardMaterial({ color: 0xc7a15f, flatShading: true }));
+  const cmpWireC = new THREE.LineSegments(new THREE.WireframeGeometry(lodGeoms[0]), wireMat);
+  const cmpWireF = new THREE.LineSegments(new THREE.WireframeGeometry(lodGeoms[2]), wireMat);
+  compareGroup.add(cmpCoarse, cmpFine, cmpWireC, cmpWireF);
+  let cmpFlash = 0;
+  let cmpPrevFine = true;
+
   let radius = 5;
   let yaw = 0.6, pitch = 0.25;
   let dragging = false, lastX = 0, lastY = 0;
@@ -70,6 +93,25 @@ export function initSection6() {
     const dist = radius;
     const lodIdx = pickLod(dist);
     lodMeshGroups.forEach((g, i) => (g.visible = i === lodIdx));
+    lodWires.forEach((w, i) => (w.visible = showWire && i === lodIdx));
+
+    // 従来LOD側: 2段階でパッと切り替え＋赤フラッシュ
+    if (compareGroup.visible) {
+      const useFine = dist < 4.0;
+      if (useFine !== cmpPrevFine) { cmpFlash = 24; cmpPrevFine = useFine; }
+      cmpFine.visible = useFine;
+      cmpCoarse.visible = !useFine;
+      cmpWireF.visible = showWire && useFine;
+      cmpWireC.visible = showWire && !useFine;
+      const flashOn = cmpFlash > 0 && (cmpFlash % 8) < 4;
+      cmpFine.material.emissive = new THREE.Color(flashOn ? 0xaa0000 : 0x000000);
+      cmpCoarse.material.emissive = new THREE.Color(flashOn ? 0xaa0000 : 0x000000);
+      if (cmpFlash > 0) cmpFlash--;
+    }
+    if (pyramidRows) pyramidRows.forEach((row, i) => {
+      row.style.background = i === lodIdx ? "color-mix(in srgb, var(--accent) 30%, transparent)" : "transparent";
+      row.style.color = i === lodIdx ? "var(--text)" : "var(--muted)";
+    });
 
     let hwTris = 0, swTris = 0, total = 0;
     const camPos = camera.position;
@@ -93,12 +135,40 @@ export function initSection6() {
     infoLabel.textContent = `LOD ${lodIdx + 1}/3（"1ピクセル=1ポリゴン"付近に自動調整） ｜ HWパス:${hwTris}三角形 / SWパス:${swTris}三角形`;
   }
 
-  controlsHost.appendChild(slider({ label: "カメラ距離（近づけたり離したり）", min: 2, max: 8, step: 0.05, value: radius, onInput: (v) => (radius = v) }));
+  const distS = slider({ label: "カメラ距離（近づけたり離したり）", min: 2, max: 8, step: 0.05, value: radius, onInput: (v) => (radius = v) });
+  distS.querySelector("input").id = "sec6-distance";
+  controlsHost.appendChild(distS);
   const checkboxWrap = el("label", { class: "field inline" }, []);
-  const checkbox = el("input", { type: "checkbox" });
+  const checkbox = el("input", { type: "checkbox", id: "sec6-viz" });
   checkbox.addEventListener("change", () => (vizMode = checkbox.checked));
   checkboxWrap.append(checkbox, el("span", {}, "Nanite描画ルート可視化モード"));
   controlsHost.appendChild(checkboxWrap);
+
+  // 従来LOD比較
+  const cmpWrap = el("label", { class: "field inline" }, []);
+  const cmpBox = el("input", { type: "checkbox", id: "sec6-compare" });
+  cmpBox.addEventListener("change", () => (compareGroup.visible = cmpBox.checked));
+  cmpWrap.append(cmpBox, el("span", {}, "従来LOD比較（右側: 2段階LOD。切り替わる瞬間に赤く光る＝ポップイン）"));
+  controlsHost.appendChild(cmpWrap);
+
+  // ワイヤーフレーム表示
+  const wireWrap = el("label", { class: "field inline" }, []);
+  const wireBox = el("input", { type: "checkbox", id: "sec6-wire", checked: "" });
+  wireBox.checked = true;
+  wireBox.addEventListener("change", () => (showWire = wireBox.checked));
+  wireWrap.append(wireBox, el("span", {}, "網の目（ワイヤーフレーム）を表示"));
+  controlsHost.appendChild(wireWrap);
+
+  // ストリーミング可視化ピラミッド
+  const pyramidRows = [
+    el("div", { style: "padding:2px 8px;border-radius:4px;font-size:0.72rem;" }, "▲ 超低精細クラスター群（遠距離用・容量小）"),
+    el("div", { style: "padding:2px 8px;border-radius:4px;font-size:0.72rem;" }, "▲▲ 中精細クラスター群（中距離用）"),
+    el("div", { style: "padding:2px 8px;border-radius:4px;font-size:0.72rem;" }, "▲▲▲ 高精細クラスター群（近距離用・容量大）"),
+  ];
+  controlsHost.appendChild(el("div", { class: "vgroup" }, [
+    el("div", { class: "vgroup-title" }, "💾 SSD上のクラスター・ピラミッド（今VRAMに読まれている段）"),
+    ...pyramidRows,
+  ]));
   controlsHost.appendChild(
     el("div", { class: "vgroup" }, [
       el("div", { class: "vgroup-title" }, "負荷メーター"),

@@ -3,216 +3,156 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>3D CG描画のしくみ ― 座標からNaniteまで</title>
-<meta name="description" content="中学数学の座標から始めて、現代ゲームの描画パイプライン、そしてMeshlet/Naniteまでを触って理解するインタラクティブ解説サイト" />
+<title>3D CG描画のしくみ ― 座標からNaniteまで、数式ゼロの13ページ</title>
+<meta name="description" content="中学数学の座標だけを前提に、現代ゲームの描画パイプラインとMeshlet/Naniteまでを、1テーマ1ページ×13ページで丁寧に学べる体験型解説サイト" />
 <link rel="stylesheet" href="css/style.css" />
-<script type="importmap">
-{
-  "imports": {
-    "three": "./js/vendor/three/build/three.module.min.js",
-    "three/addons/": "./js/vendor/three/examples/jsm/"
-  }
-}
-</script>
 </head>
 <body>
 
 <header class="hero">
   <div class="hero-inner">
-    <p class="eyebrow">初学者のための 体験型3DCG講座</p>
+    <p class="eyebrow">数式ゼロ・全13ページ・体験型</p>
     <h1>3D CGは、なぜ画面に映るのか？</h1>
     <p class="lead">
-      数式は一切使いません。中学数学の「座標」から出発し、頂点がピクセルになるまで、
-      そして高精細なモデルを軽く描くための最新技術（Meshlet / Nanite）まで、
-      すべて<strong>手を動かして</strong>理解できるページです。
+      中学数学の「座標」だけを持って出発し、現代ゲームの描画パイプラインの全工程、
+      GPUが重くなる本当の理由、そして最新技術 Meshlet / Nanite の仕組みまで。
+      <strong>1ページ1テーマ</strong>で、すべて触れるデモとクイズ付きで理解していきます。
     </p>
-    <a class="cta" href="#sec1">スタートする ↓</a>
+    <a class="cta" href="pages/ch1-coordinates.html">最初から読む →</a>
   </div>
 </header>
 
-<nav class="toc" id="toc">
-  <ol>
-    <li><a href="#sec1" data-nav>Ⅰ. 3Dデータとは？</a></li>
-    <li><a href="#sec2" data-nav>Ⅱ. 4つの空間の変換</a></li>
-    <li><a href="#sec3" data-nav>Ⅲ. 描画パスの解剖</a></li>
-    <li><a href="#sec4" data-nav>Ⅳ. クアッドの無駄</a></li>
-    <li><a href="#sec5" data-nav>Ⅴ. Meshlet</a></li>
-    <li><a href="#sec6" data-nav>Ⅵ. Nanite</a></li>
-    <li><a href="#sec7" data-nav>Ⅶ. まとめ</a></li>
-  </ol>
-</nav>
+<main style="max-width:1000px;margin:0 auto;padding:2rem 1.4rem 5rem;">
 
-<main>
+  <section>
+    <h2 style="border-bottom:2px solid var(--border);padding-bottom:0.4rem;">このサイトの読み方</h2>
+    <ul style="color:var(--muted);line-height:2;">
+      <li>全13ページ。<strong>順番に読めば必ず繋がる</strong>ように書かれています（1ページ10〜15分）</li>
+      <li>数式・プログラムコードは<strong>一切登場しません</strong>。すべて図解・例え話・触って動かせるデモで説明します</li>
+      <li>各ページに「ガイド付きツアー」ボタンがあります。<strong>デモが自分で動いて実演</strong>してくれるので、まずツアーを見てから自由に触るのがおすすめです</li>
+      <li>各ページ末尾の<strong>理解度チェック（3問）</strong>で定着を確認してから次へ進んでください</li>
+      <li>用語が分からなくなったら<a href="glossary.html">用語集</a>へ。各ページからもリンクしています</li>
+    </ul>
+  </section>
 
-  <section id="sec1" class="section">
-    <div class="section-head">
-      <p class="section-no">Ⅰ</p>
-      <h2>そもそも3Dデータとは？ ― 中学数学の「座標」からスタート</h2>
+  <section>
+    <h2 style="border-bottom:2px solid var(--border);padding-bottom:0.4rem;margin-top:3rem;">学習マップ（全13ページ）</h2>
+
+    <h3 style="color:var(--accent);margin-top:2rem;">PART 1: 3Dデータの正体（2ページ）</h3>
+    <div class="map-grid">
+      <a class="map-card" href="pages/ch1-coordinates.html">
+        <span class="no">第1章</span>
+        <h3>座標とは何か</h3>
+        <p>中学のグラフに奥行きZを1本足すだけ。すべての土台。</p>
+        <span class="time">⏱ 約10分</span>
+      </a>
+      <a class="map-card" href="pages/ch1b-vertex-polygon.html">
+        <span class="no">第1章b</span>
+        <h3>頂点とポリゴン</h3>
+        <p>点を3つ結ぶと面が生まれる。3Dモデル=2つの数字リスト。</p>
+        <span class="time">⏱ 約10分</span>
+      </a>
     </div>
-    <div class="section-body">
-      <p>
-        3Dグラフィックスは高度な数学の塊に見えますが、本質は中学数学で習う「グラフの座標（X, Y）」に、
-        奥行き（Z）を1つ足しただけです。3Dモデルとは、この「点（頂点）」の住所（座標データ）が集まり、
-        点と点を結んで「三角形（ポリゴン）」にした「数値のリスト」にすぎません。
-        アーティストがDCCツールで作っている美しい造形も、データの本質はただの数字の羅列です。
-      </p>
-      <div class="panel" id="sec1-app">
-        <div class="panel-controls" id="sec1-controls"></div>
-        <div class="panel-canvas" id="sec1-canvas"></div>
-      </div>
-      <p class="takeaway">💡 ポイント：3Dモデルの正体は「絵」ではなく「座標（数値）のリスト」。</p>
+
+    <h3 style="color:var(--accent);margin-top:2rem;">PART 2: 頂点の旅 ― 5つの空間（4ページ）</h3>
+    <div class="map-grid">
+      <a class="map-card" href="pages/ch2a-local-world.html">
+        <span class="no">第2章a</span>
+        <h3>ローカル空間とワールド空間</h3>
+        <p>モデルを「世界」に配置する。Transformの正体。</p>
+        <span class="time">⏱ 約12分</span>
+      </a>
+      <a class="map-card" href="pages/ch2b-view.html">
+        <span class="no">第2章b</span>
+        <h3>ビュー空間</h3>
+        <p>カメラは動かない。世界の方が動く、という衝撃。</p>
+        <span class="time">⏱ 約12分</span>
+      </a>
+      <a class="map-card" href="pages/ch2c-projection.html">
+        <span class="no">第2章c</span>
+        <h3>投影とクリップ</h3>
+        <p>映る範囲の箱（視錐台）と、遠近感が生まれる場所。</p>
+        <span class="time">⏱ 約12分</span>
+      </a>
+      <a class="map-card" href="pages/ch2d-rasterize.html">
+        <span class="no">第2章d</span>
+        <h3>ラスタライズ</h3>
+        <p>三角形がついにマス目（ピクセル）になる。旅の終着駅。</p>
+        <span class="time">⏱ 約10分</span>
+      </a>
+    </div>
+
+    <h3 style="color:var(--accent);margin-top:2rem;">PART 3: 1枚の絵を描き切る（3ページ）</h3>
+    <div class="map-grid">
+      <a class="map-card" href="pages/ch3a-gbuffer.html">
+        <span class="no">第3章a</span>
+        <h3>G-Buffer</h3>
+        <p>現代ゲームは色をすぐ塗らない。まず素材の下ごしらえ。</p>
+        <span class="time">⏱ 約12分</span>
+      </a>
+      <a class="map-card" href="pages/ch3b-lighting.html">
+        <span class="no">第3章b</span>
+        <h3>ライティングパス</h3>
+        <p>1マスぶんの光の計算を日本語で読む。影の正体も。</p>
+        <span class="time">⏱ 約10分</span>
+      </a>
+      <a class="map-card" href="pages/ch3c-transparent-post.html">
+        <span class="no">第3章c</span>
+        <h3>半透明とポストプロセス</h3>
+        <p>ガラスの特別扱いと、完成写真への最後の化粧。</p>
+        <span class="time">⏱ 約10分</span>
+      </a>
+    </div>
+
+    <h3 style="color:var(--accent);margin-top:2rem;">PART 4: 負荷の正体と次世代技術（3ページ）</h3>
+    <div class="map-grid">
+      <a class="map-card" href="pages/ch4-quad-overdraw.html">
+        <span class="no">第4章</span>
+        <h3>クアッドの罠</h3>
+        <p>遠景の高精細モデルはなぜ重い？ 二重の罰を解剖する。</p>
+        <span class="time">⏱ 約15分</span>
+      </a>
+      <a class="map-card" href="pages/ch5-meshlet.html">
+        <span class="no">第5章</span>
+        <h3>Meshlet</h3>
+        <p>働く前に箱ごと捨てる。ハードウェアの新常識。</p>
+        <span class="time">⏱ 約12分</span>
+      </a>
+      <a class="map-card" href="pages/ch6-nanite.html">
+        <span class="no">第6章</span>
+        <h3>Nanite</h3>
+        <p>全自動化と、クアッドの掟を破る裏ルート。</p>
+        <span class="time">⏱ 約15分</span>
+      </a>
+    </div>
+
+    <h3 style="color:var(--accent);margin-top:2rem;">PART 5: まとめ（1ページ）</h3>
+    <div class="map-grid">
+      <a class="map-card" href="pages/ch7-summary.html">
+        <span class="no">第7章</span>
+        <h3>まとめとアーティストの未来</h3>
+        <p>旅の全体地図、ワークフローの変化、卒業クイズ10問。</p>
+        <span class="time">⏱ 約10分</span>
+      </a>
+      <a class="map-card" href="glossary.html">
+        <span class="no">付録</span>
+        <h3>用語集</h3>
+        <p>全ページの用語を五十音順で。復習にどうぞ。</p>
+        <span class="time">⏱ 随時参照</span>
+      </a>
     </div>
   </section>
 
-  <section id="sec2" class="section">
-    <div class="section-head">
-      <p class="section-no">Ⅱ</p>
-      <h2>空間の連続変換 ― 4つの空間をカメラと世界を動かして体験</h2>
-    </div>
-    <div class="section-body">
-      <p>
-        数値のリストに過ぎない3Dモデルが、最終的にディスプレイという2Dの平面に映るまで、
-        GPUの内部では「4つの空間（座標系）」を順番に変遷させる処理が行われます。
-        この変換を瞬時に行うためのパラメータの塊を「行列」と呼びますが、数式は使いません。
-        「空間がワープしていく因果関係」だけを体験してください。
-      </p>
-
-      <h3 class="step-title">① ローカル空間 → ワールド空間（ワールド行列）</h3>
-      <p>木と岩、2つのモデルは今、全く同じ原点に重なって配置されています。スライダーでそれぞれの位置・回転・大きさを変えて、世界の中に「配置」してみましょう。</p>
-      <div class="panel" id="sec2a-app">
-        <div class="panel-controls" id="sec2a-controls"></div>
-        <div class="panel-canvas dual" id="sec2a-canvas"></div>
-      </div>
-
-      <h3 class="step-title">② ワールド空間 → ビュー空間（ビュー行列）</h3>
-      <p>カメラを動かしてみてください。左側（プレイヤー視点）の景色が変わると同時に、右側（神の視点）では「世界全体がカメラを原点に再計算」される様子が数値で見えます。</p>
-      <div class="panel" id="sec2b-app">
-        <div class="panel-controls" id="sec2b-controls"></div>
-        <div class="panel-canvas dual" id="sec2b-canvas"></div>
-      </div>
-
-      <h3 class="step-title">③ ビュー空間 → クリップ空間（投影変換）</h3>
-      <p>画角（FOV）やNear/Farクリップ面を動かして、視錐台（Frustum）の外に出た頂点が赤く光って画面から消える様子を見てみましょう。</p>
-      <div class="panel" id="sec2c-app">
-        <div class="panel-controls" id="sec2c-controls"></div>
-        <div class="panel-canvas dual" id="sec2c-canvas"></div>
-      </div>
-
-      <h3 class="step-title">④ クリップ空間 → スクリーン空間（ラスタライズの基本）</h3>
-      <p>3Dの三角形が、ディスプレイの「ドット（ピクセル）」の格子に落とし込まれていく様子をスロー再生します。</p>
-      <div class="panel" id="sec2d-app">
-        <div class="panel-controls" id="sec2d-controls"></div>
-        <div class="panel-canvas" id="sec2d-canvas"></div>
-      </div>
-      <p class="takeaway">💡 ポイント：頂点は「ローカル→ワールド→ビュー→クリップ→スクリーン」の順に、目的の違う4つの座標系を渡り歩く。</p>
-    </div>
-  </section>
-
-  <section id="sec3" class="section">
-    <div class="section-head">
-      <p class="section-no">Ⅲ</p>
-      <h2>レンダーパイプラインの各パス ― 画面を「描き切る」までの全工程</h2>
-    </div>
-    <div class="section-body">
-      <p>
-        現代の3Dゲームは、一発で完成品の絵を描いているわけではありません。「不透明ジオメトリ → ライティング → 半透明 → ポストプロセス」の
-        順に工程（パス）を重ねて1枚の絵を完成させています。タブを切り替えて、途中経過をのぞいてみましょう。
-      </p>
-      <div class="panel" id="sec3-app">
-        <div class="panel-canvas" id="sec3-canvas"></div>
-        <div class="panel-controls tabs" id="sec3-controls"></div>
-      </div>
-      <p class="takeaway">💡 ポイント：現代描画は「位置・向き・材質」を別レイヤー（G-Buffer）に分けて保存し、後からまとめて光を当てる。</p>
-    </div>
-  </section>
-
-  <section id="sec4" class="section">
-    <div class="section-head">
-      <p class="section-no">Ⅳ</p>
-      <h2>高密度ジオメトリのボトルネック ― クアッドラスタライズの非効率化</h2>
-    </div>
-    <div class="section-body">
-      <p>
-        GPUはピクセルを1つずつではなく、必ず「2×2の4ピクセル（クアッド）」を最小単位として処理します。
-        遠景で極小のポリゴンが密集すると、この仕組みが牙をむきます。カメラ距離を動かして体験してください。
-      </p>
-      <div class="panel" id="sec4-app">
-        <div class="panel-controls" id="sec4-controls"></div>
-        <div class="panel-canvas" id="sec4-canvas"></div>
-      </div>
-      <p class="takeaway">💡 ポイント：1ピクセルにしか色が塗られなくても、GPUは4ピクセル分の計算を強制される。密集すればその分だけ重複して無駄が積み上がる。</p>
-    </div>
-  </section>
-
-  <section id="sec5" class="section">
-    <div class="section-head">
-      <p class="section-no">Ⅴ</p>
-      <h2>Meshletによるハードウェア刷新 ― 頂点処理を「塊」で再定義する</h2>
-    </div>
-    <div class="section-body">
-      <p>
-        DirectX 12 Ultimate / Vulkanが導入した新規格「Meshlet」は、モデルを最大64頂点・126三角形の
-        小分けパックに分割し、描画が始まる<strong>前</strong>に不要な塊ごとカリング（破棄）します。
-      </p>
-      <div class="panel" id="sec5-app">
-        <div class="panel-controls" id="sec5-controls"></div>
-        <div class="panel-canvas" id="sec5-canvas"></div>
-      </div>
-      <p class="takeaway">💡 ポイント：頂点計算が始まる手前で塊ごと捨てるので、クアッドの無駄がそもそも発生しない。</p>
-    </div>
-  </section>
-
-  <section id="sec6" class="section">
-    <div class="section-head">
-      <p class="section-no">Ⅵ</p>
-      <h2>Naniteによる全自動システム ― ソフトウェア・ラスタライザーの罠回避</h2>
-    </div>
-    <div class="section-body">
-      <p>
-        Unreal Engine 5のNaniteは、Meshletの仕組みを内部で使いつつ、
-        微小ポリゴンについては「GPU本来の塗りつぶし機能（ハードウェア・ラスタライザー）」を完全にバイパスし、
-        自前のソフトウェア・ラスタライズで1ピクセルずつ塗ります。
-      </p>
-      <div class="panel" id="sec6-app">
-        <div class="panel-controls" id="sec6-controls"></div>
-        <div class="panel-canvas" id="sec6-canvas"></div>
-      </div>
-      <p class="takeaway">💡 ポイント：重くなるくらいなら、GPUの標準ルートを無視して自前でピクセルを塗る。だからどれだけ密集しても負荷が一定。</p>
-    </div>
-  </section>
-
-  <section id="sec7" class="section">
-    <div class="section-head">
-      <p class="section-no">Ⅶ</p>
-      <h2>総括と実務ワークフローの変革 ― アーティストの未来</h2>
-    </div>
-    <div class="section-body">
-      <div class="summary-grid">
-        <div class="summary-card">
-          <h3>これまでのワークフロー</h3>
-          <p>ポリゴン数の予算を細かく決め、距離ごとに複数のLODモデルを手作業で用意し、
-          遠景でのポリゴン密集（クアッドオーバードロー）を避けるために涙ぐましい最適化を重ねてきました。</p>
-        </div>
-        <div class="summary-card">
-          <h3>これからのワークフロー</h3>
-          <p>Meshlet／Naniteのある世界では、ハードウェアとエンジンが「見えている解像度分だけ」自動的に処理してくれます。
-          アーティストは映画品質のディテールをそのまま持ち込み、最適化よりも「表現」に時間を使えるようになります。</p>
-        </div>
-      </div>
-      <p>
-        本ページで体験した「座標 → 空間変換 → 描画パス → クアッドの罠 → Meshlet → Nanite」という流れは、
-        そのまま現代のゲームグラフィックスの歴史でもあります。数式を1つも使わずとも、
-        「なぜ重くなるのか」「なぜ最新技術は無敵に見えるのか」を因果関係で説明できるようになったはずです。
-      </p>
-    </div>
+  <section style="margin-top:3rem;">
+    <h2 style="border-bottom:2px solid var(--border);padding-bottom:0.4rem;">対象読者</h2>
+    <p style="color:var(--muted);">文系のゲームクリエイター、アーティスト、背景モデラー、プランナー。「数式やコードは苦手だけど、3D描画の仕組みとGPU負荷の因果関係は正しく知りたい」という方のために書かれています。前提知識は中学数学（正負の数と座標平面）だけです。</p>
   </section>
 
 </main>
 
 <footer class="footer">
-  <p>Interactive 3D CG Rendering Guide — Three.js / WebGL によるエミュレーション</p>
+  <p>Interactive 3D CG Rendering Guide — Three.js / WebGL によるエミュレーション（数式ゼロ・全13ページ）</p>
 </footer>
 
-<script type="module" src="js/main.js"></script>
 </body>
 </html>

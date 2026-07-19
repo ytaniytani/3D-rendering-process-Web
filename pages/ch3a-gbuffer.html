@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>第3章a: G-Buffer | 3DCG描画のしくみ</title>
+<link rel="stylesheet" href="../css/style.css" />
+<script type="importmap">
+{ "imports": { "three": "../js/vendor/three/build/three.module.min.js", "three/addons/": "../js/vendor/three/examples/jsm/" } }
+</script>
+</head>
+<body>
+
+<article class="lesson">
+  <header class="lesson-head">
+    <p class="lesson-no">第3章a（13ページ中の7ページ目・約12分）</p>
+    <h1>G-Buffer ― 絵の「素材」を先に作って保存する</h1>
+    <p class="lesson-sub">現代のゲームは、一発で完成品の絵を描きません。まず「下ごしらえ」をします。その保存場所がG-Bufferです。</p>
+  </header>
+
+  <section class="recap">
+    <h2>⏪ 前のページの30秒復習</h2>
+    <ul>
+      <li>ラスタライズ＝三角形の内側のマス目を洗い出す作業。色はまだ塗っていない</li>
+      <li>各マスの奥行き情報（深度）は別枠で保管されている</li>
+      <li>頂点の旅: ローカル→ワールド→ビュー→クリップ→スクリーンの5駅</li>
+    </ul>
+    <p class="recap-link"><a href="ch2d-rasterize.html">→ 不安なら第2章dを読み直す</a></p>
+  </section>
+
+  <section class="goals">
+    <h2>🎯 このページで分かること</h2>
+    <ul>
+      <li>現代ゲームが「すぐに色を塗らない」理由の入り口が分かる</li>
+      <li>G-Bufferに保存される3種類の素材（深度・法線・材質）が何かを言えるようになる</li>
+      <li>法線ビューがなぜ赤緑青のサイケな色になるのか説明できるようになる</li>
+    </ul>
+  </section>
+
+  <section class="prose">
+
+    <h2>1. 問題提起: マス目が決まった。すぐ色を塗ればいい？</h2>
+    <p>前の章で「どのマスを塗るか」のリストができました。素直に考えれば、次はすぐに色を塗ればいい。実際、昔のゲームはそうしていました。三角形をラスタライズしたその場で、光の計算までやって最終的な色を塗る。この方式を<strong>フォワードレンダリング</strong>と呼びます。</p>
+    <p>ところがこの方式には弱点があります。<strong>後から他の三角形に上書きされるマスにも、律儀に色計算をしてしまう</strong>のです。手前に別の壁があって最終的に見えない床のために、高価な光の計算をして、結果は捨てられる。ライトが増えるほど、この無駄は雪だるま式に膨らみます。</p>
+    <p>そこで現代の多くのゲームは、発想を変えました。<strong>「色を塗るのは最後の最後。まず全マスの『素材』だけを集めて保存しよう」</strong>。この方式をディファードレンダリング（deferred＝後回し）と呼び、素材の保存場所を<strong>G-Buffer</strong>（ジーバッファ）と呼びます。</p>
+
+    <div class="analogy">
+      <p>料理で例えるなら、注文が入るたびに野菜を切って炒めて…と毎回フルコースで作るのがフォワード方式。対してディファード方式は、<strong>先に野菜を全部切ってバットに並べておき（＝G-Buffer）、最後に必要な分だけ一気に火を通す</strong>プロの厨房方式です。「下ごしらえ」と「調理」を分けるから速いのです。</p>
+    </div>
+
+    <h2>2. 素材レイヤーその1: 深度（Depth）</h2>
+    <p>1つ目の素材は、前の章から持ち越した<strong>深度</strong>――「そのマスに映っている物は、カメラからどれくらい遠いか」です。</p>
+    <p>深度の一番の仕事は<strong>前後関係の判定</strong>です。同じマスに三角形が2枚重なったら、深度が小さい（＝手前の）方を残す。この判定をZテストと呼びます。手前の物が奥の物を隠す、という当たり前の現象は、全マスでこの比較が行われた結果です。</p>
+    <p>深度は画像として可視化できます。デモの「G-Buffer: 深度」タブを押すと、<strong>手前が黒、奥が白のモノクロ画像</strong>が見えます。あれが深度バッファの中身そのものです。</p>
+
+    <h2>3. 素材レイヤーその2: 法線（Normal）</h2>
+    <p>2つ目の素材は<strong>法線（ほうせん）</strong>。聞き慣れない言葉ですが、意味は「<strong>その表面がどっちを向いているか</strong>」を表す矢印です。床の法線は真上を向き、壁の法線は横を向いています。</p>
+    <p>なぜ向きの情報が要るのか？　<strong>光の当たり方は表面の向きで決まる</strong>からです。太陽が真上にあるとき、上を向いた面（床）は明るく、横を向いた面（壁）は薄暗い。この計算を次のページ（ライティング）でやるために、全マスの「向き」を先に保存しておくのです。</p>
+    <div class="keypoint">
+      <p>法線ビューがサイケデリックな赤緑青になる理由: 矢印の向きは(X, Y, Z)の3つの数字で表せます。画像の色も(R, G, B)の3つの数字。そこで<strong>XをRに、YをGに、ZをBにそのまま割り当てて「向きを色として絵に保存」</strong>しているのです。右向きの面ほど赤く、上向きの面ほど緑に映る。あれは芸術ではなく、ただのデータの入れ物です。</p>
+    </div>
+
+    <h2>4. 素材レイヤーその3: 材質（ベースカラー・ラフネス・メタリック）</h2>
+    <p>3つ目の素材は、アーティストのあなたが一番よく知っているものです。マテリアル設定でいつも触っている:</p>
+    <ul>
+      <li><strong>ベースカラー</strong> ― 光の影響を受ける前の「地の色」</li>
+      <li><strong>ラフネス</strong> ― 表面のザラザラ度。低いとツルツルの鏡面、高いとマットな質感</li>
+      <li><strong>メタリック</strong> ― 金属か非金属か</li>
+    </ul>
+    <p>これらのパラメータが、マスごとにそのまま保存されます。あなたがマテリアルエディタで設定した数値は、毎フレーム、画面のマス目単位でこのG-Bufferに書き込まれているのです。</p>
+
+    <h2>5. なぜ分けるのか ― 「見えているマスだけ」に絞るため</h2>
+    <p>ここまでの3種類の素材がそろうと、決定的なメリットが生まれます。</p>
+    <p>G-Bufferに残っているのは、Zテストを勝ち抜いた<strong>「最終的に画面に見えているマス」だけ</strong>です。つまりこの後の高価な光の計算を、<strong>見えているマスに対してだけ</strong>行えばよくなる。隠れて見えない床のために光を計算する無駄が、構造的に消えるのです。</p>
+    <p>「先に素材を集めて、あとから必要な分だけ調理する」――この段取りの良さが、ディファードレンダリングが現代の主流になった理由です。</p>
+
+    <h2>6. 触って確かめる</h2>
+    <p>下のデモでタブを切り替えると、同じシーンの「素材レイヤー」を1枚ずつ見られます。さらに<strong>3D画面の物体をクリック</strong>すると、そのマスに保存されている素材袋の中身（深度・法線・材質）が数値で表示されます。</p>
+  </section>
+
+  <div class="demo-title"><span class="badge">DEMO</span><h3>G-Buffer解剖ビューワー（タブ切り替え＋ピクセル検査）</h3></div>
+  <div class="panel" id="sec3-app">
+    <div class="panel-canvas" id="sec3-canvas"></div>
+    <div class="panel-controls tabs" id="sec3-controls"></div>
+  </div>
+  <div id="demo-checklist"></div>
+
+  <section class="prose">
+    <div class="misconception">
+      <p><strong>「G-Bufferは1枚のすごい画像」</strong>――1枚ではありません。深度用、法線用、ベースカラー用…と<strong>複数枚の画像のセット</strong>です。同じ解像度の透明フィルムが何枚も重なっていて、同じマスの位置にそれぞれ別の情報が書かれている、と考えてください。デバッグビューで見ているのは、そのうちの1枚を取り出した姿です。</p>
+    </div>
+
+    <h2>7. このページのまとめ</h2>
+    <ul>
+      <li>昔のゲームは即座に色を塗った（フォワード）が、隠れるマスへの計算が無駄だった</li>
+      <li>現代は<strong>素材を先に保存（G-Buffer）→ 後から調理（ライティング）</strong>のディファード方式が主流</li>
+      <li>素材は主に3種類: <strong>深度</strong>（距離・前後判定）、<strong>法線</strong>（表面の向き）、<strong>材質</strong>（地の色・ラフネス・メタリック）</li>
+      <li>法線のRGB表示は<strong>向き(XYZ)を色(RGB)に割り当てた</strong>だけのデータの入れ物</li>
+    </ul>
+  </section>
+
+  <section class="quiz" id="quiz"></section>
+
+  <section class="terms-box">
+    <h2>このページで出てきた用語</h2>
+    <dl>
+      <dt>G-Buffer</dt><dd>画面全マスぶんの「素材」を保存する複数枚の画像セット。<a href="../glossary.html#gbuffer">用語集</a></dd>
+      <dt>法線（ほうせん）</dt><dd>表面がどっちを向いているかを表す矢印。光の計算の必需品。<a href="../glossary.html#normal">用語集</a></dd>
+      <dt>Zテスト</dt><dd>同じマスに重なった三角形のうち、深度が手前のものを残す判定。<a href="../glossary.html#ztest">用語集</a></dd>
+      <dt>ディファードレンダリング</dt><dd>素材保存→後から一括ライティング、の後回し方式。<a href="../glossary.html#deferred">用語集</a></dd>
+      <dt>フォワードレンダリング</dt><dd>ラスタライズしたその場で色まで塗る従来方式。<a href="../glossary.html#forward">用語集</a></dd>
+    </dl>
+  </section>
+
+  <p class="next-preview">▶ 次のページでは、この素材にいよいよ「火を通し」ます。1マスぶんの光の計算を、数式なしの日本語で読んでみましょう。</p>
+</article>
+
+<script type="module">
+  import { renderChrome, renderQuiz, tourButton, renderChecklist } from "../js/site.js";
+  import { initSection3 } from "../js/section3-passes.js";
+
+  renderChrome();
+  initSection3({ tabs: ["final", "basecolor", "normal", "depth"], inspector: true });
+
+  renderChecklist("#demo-checklist", [
+    "「深度」タブで、手前が黒・奥が白のモノクロ画像を見た",
+    "「法線」タブで、面の向きごとに色が変わるのを見た（上向きの床の色に注目）",
+    "「材質」タブで、光の影響のない「地の色」だけの姿を見た",
+    "物体をクリックして、そのマスの素材袋の中身（数値）を見た",
+  ]);
+
+  tourButton("#sec3-controls", [
+    { sel: "#sec3-tab-basecolor", text: "まず「材質(BaseColor)」タブ。光の計算が入る前の、のっぺりした「地の色」だけの世界です。", click: "#sec3-tab-basecolor" },
+    { sel: "#sec3-tab-normal", text: "次に「法線」。面の向き(XYZ)を色(RGB)に割り当てただけのデータです。上向きの面、右向きの面で色が違うのを確認してください。", click: "#sec3-tab-normal" },
+    { sel: "#sec3-tab-depth", text: "「深度」は手前が黒く、奥ほど白いモノクロ画像。前後関係の判定（Zテスト）に使われます。", click: "#sec3-tab-depth" },
+    { sel: "#sec3-canvas", text: "最後に3D画面の物体を直接クリックしてみてください。そのマスに保存されている素材の中身が数値で見られます。", click: "#sec3-tab-final" },
+  ]);
+
+  renderQuiz("#quiz", [
+    {
+      q: "G-Bufferに保存される3種類の素材の組み合わせとして正しいのは？",
+      choices: ["色・音・振動", "深度・法線・材質", "頂点・ポリゴン・テクスチャ", "影・光・カメラ"],
+      a: 1,
+      exp: "深度（カメラからの距離）、法線（表面の向き）、材質（ベースカラー/ラフネス/メタリック）の3種類が代表です。",
+    },
+    {
+      q: "法線ビューが赤緑青のサイケな色になる理由は？",
+      choices: ["デバッグを楽しくするための演出", "向き(X,Y,Z)を色(R,G,B)にそのまま割り当てて保存しているから", "GPUの故障を表示している", "光の三原色を計算しているから"],
+      a: 1,
+      exp: "矢印の向きXYZを画像の色RGBに割り当てた「データの入れ物」。右向きほど赤く、上向きほど緑に映ります。",
+    },
+    {
+      q: "素材を先に保存する方式（ディファード）の一番のメリットは？",
+      choices: ["画像がきれいになる", "高価な光の計算を「見えているマスだけ」に絞れる", "頂点数を減らせる", "ファイルサイズが小さくなる"],
+      a: 1,
+      exp: "Zテストを勝ち抜いた「見えているマス」だけがG-Bufferに残るので、隠れた部分への光計算の無駄が構造的に消えます。",
+    },
+  ]);
+</script>
+</body>
+</html>

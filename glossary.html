@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>用語集 | 3DCG描画のしくみ</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<article class="lesson">
+  <header class="lesson-head">
+    <p class="lesson-no">付録</p>
+    <h1>用語集</h1>
+    <p class="lesson-sub">全ページに登場した用語を五十音・アルファベット順にまとめています。各項目の「初出」リンクから、詳しい説明のあるページに戻れます。</p>
+  </header>
+
+  <section class="prose">
+    <dl class="glossary-list">
+
+      <dt id="alphablend">アルファブレンド</dt>
+      <dd><span class="short">奥の色と手前の半透明の色を、不透明度の比率で混ぜる計算。</span> 色付き透明フィルムを重ねるのと同じで、重ねる順番（奥から手前）が重要。 <a class="src" href="pages/ch3c-transparent-post.html">初出: 第3章c</a></dd>
+
+      <dt id="genten">原点（げんてん）</dt>
+      <dd><span class="short">すべての軸がゼロになる基準の場所。(0, 0, 0)。</span> 座標は必ず「原点から見てどれだけ進んだか」で表される。 <a class="src" href="pages/ch1-coordinates.html">初出: 第1章</a></dd>
+
+      <dt id="zahyo">座標（ざひょう）</dt>
+      <dd><span class="short">原点を基準にした場所の住所。3Dでは(X, Y, Z)の数字3つの組。</span> 3DCGのすべてのデータの土台。点そのものには色も大きさもない。 <a class="src" href="pages/ch1-coordinates.html">初出: 第1章</a></dd>
+
+      <dt id="jiku">X軸 / Y軸 / Z軸</dt>
+      <dd><span class="short">左右／上下／奥行きの3方向のものさし。</span> 本サイトではZのプラス＝手前で統一。 <a class="src" href="pages/ch1-coordinates.html">初出: 第1章</a></dd>
+
+      <dt id="frustum">視錐台（しすいだい）／Frustum</dt>
+      <dd><span class="short">カメラに映る範囲を表す、頭を切ったピラミッド型の箱。</span> 上下左右4枚とNear/Far面の計6枚の壁を持つ。箱の外は描画前に切り捨てられる。 <a class="src" href="pages/ch2c-projection.html">初出: 第2章c</a></dd>
+
+      <dt id="shadowmap">シャドウマップ</dt>
+      <dd><span class="short">光源の位置から撮影した深度画像。影の判定に使う。</span> 「光源から見えない場所＝影」を全マスで照合する。 <a class="src" href="pages/ch3b-lighting.html">初出: 第3章b</a></dd>
+
+      <dt id="depth">深度（Depth）</dt>
+      <dd><span class="short">そのマスに映る物のカメラからの距離。</span> 前後関係の判定（Zテスト）と、G-Bufferの素材として使われる。 <a class="src" href="pages/ch2d-rasterize.html">初出: 第2章d</a></dd>
+
+      <dt id="screen">スクリーン空間</dt>
+      <dd><span class="short">ディスプレイの解像度のマス目に対応した最終的な2D座標系。</span> 頂点の旅の終着駅。 <a class="src" href="pages/ch2d-rasterize.html">初出: 第2章d</a></dd>
+
+      <dt id="vertex">頂点（ちょうてん）／Vertex</dt>
+      <dd><span class="short">座標(X, Y, Z)を持つ点。3Dモデルの最小の構成要素。</span> GPU負荷の話も最新技術の話も、すべて「頂点をどう効率よく処理するか」の話。 <a class="src" href="pages/ch1b-vertex-polygon.html">初出: 第1章b</a></dd>
+
+      <dt id="deferred">ディファードレンダリング</dt>
+      <dd><span class="short">素材を先に保存し（G-Buffer）、後から一括で光を計算する方式。</span> 見えているマスだけに高価な計算を絞れるため、ライトの多い現代ゲームの主流。 <a class="src" href="pages/ch3a-gbuffer.html">初出: 第3章a</a></dd>
+
+      <dt id="popin">ポップイン</dt>
+      <dd><span class="short">LOD切り替えの瞬間にモデルの見た目がカクッと変わる現象。</span> Naniteの継続的LODでは構造的に発生しない。 <a class="src" href="pages/ch6-nanite.html">初出: 第6章</a></dd>
+
+      <dt id="normal">法線（ほうせん）／Normal</dt>
+      <dd><span class="short">表面がどっちを向いているかを表す矢印。</span> 光の当たり方の計算に必須。デバッグビューで赤緑青に見えるのは向き(XYZ)を色(RGB)に割り当てているから。 <a class="src" href="pages/ch3a-gbuffer.html">初出: 第3章a</a></dd>
+
+      <dt id="polygon">ポリゴン</dt>
+      <dd><span class="short">頂点3つを結んで張られる三角形の面。3DCGの基本単位。</span> 3点は必ず同一平面に乗るため、GPUはすべてを三角形に分解して処理する。 <a class="src" href="pages/ch1b-vertex-polygon.html">初出: 第1章b</a></dd>
+
+      <dt id="bloom">ブルーム</dt>
+      <dd><span class="short">強い光が周囲ににじんで溢れるポストプロセス効果。</span> <a class="src" href="pages/ch3c-transparent-post.html">初出: 第3章c</a></dd>
+
+      <dt id="forward">フォワードレンダリング</dt>
+      <dd><span class="short">ラスタライズしたその場で光の計算まで行い、最終色を塗る従来方式。</span> 現代でも半透明の描画で現役。 <a class="src" href="pages/ch3a-gbuffer.html">初出: 第3章a</a></dd>
+
+      <dt id="frame">フレーム</dt>
+      <dd><span class="short">ゲーム画面の1コマ。</span> 60fpsなら1秒間に60回、全工程が繰り返される。 <a class="src" href="pages/ch2b-view.html">初出: 第2章b</a></dd>
+
+      <dt id="pixel">ピクセル（画素）</dt>
+      <dd><span class="short">ディスプレイの最小の光る点。</span> 画面はこのマス目の集まりで、線や面は表示できない。 <a class="src" href="pages/ch2d-rasterize.html">初出: 第2章d</a></dd>
+
+      <dt id="highlight">ハイライト</dt>
+      <dd><span class="short">ツルツルした面に映る光源のテカリ。</span> ラフネスが低いほど鋭く強い。 <a class="src" href="pages/ch3b-lighting.html">初出: 第3章b</a></dd>
+
+      <dt id="backface">背面カリング</dt>
+      <dd><span class="short">モデルの裏側など、絶対に見えない面を捨てる間引き。</span> <a class="src" href="pages/ch5-meshlet.html">初出: 第5章</a></dd>
+
+      <dt id="rasterize">ラスタライズ</dt>
+      <dd><span class="short">三角形の内側にあるピクセルを洗い出す工程。</span> 「どのマスを塗るか」を決めるだけで、「何色か」はまだ決めない。 <a class="src" href="pages/ch2d-rasterize.html">初出: 第2章d</a></dd>
+
+      <dt id="local">ローカル空間</dt>
+      <dd><span class="short">モデルファイル専用の座標系。原点はモデルの中心や足元。</span> モデラーが世界を知らずに作業できるのはこの分業のおかげ。 <a class="src" href="pages/ch2a-local-world.html">初出: 第2章a</a></dd>
+
+      <dt id="world">ワールド空間</dt>
+      <dd><span class="short">ステージ全体で共通の座標系。</span> 配置とは、ローカル空間からワールド空間への住所の一斉書き換え。 <a class="src" href="pages/ch2a-local-world.html">初出: 第2章a</a></dd>
+
+      <dt id="worldmatrix">ワールド行列</dt>
+      <dd><span class="short">Transformを行列化した「変換のレシピカード」。</span> カード1枚で全頂点を一斉にワールド空間へ引っ越しさせる。 <a class="src" href="pages/ch2a-local-world.html">初出: 第2章a</a></dd>
+
+      <dt id="wireframe">ワイヤーフレーム</dt>
+      <dd><span class="short">面を塗らず、三角形の輪郭線だけを表示するモード。</span> <a class="src" href="pages/ch1b-vertex-polygon.html">初出: 第1章b</a></dd>
+
+      <dt id="clip">クリップ空間</dt>
+      <dd><span class="short">投影（押し潰し）後の座標系。視錐台の外の頂点はここで切り捨てられる。</span> 名前の由来はクリッピング＝切り抜き。 <a class="src" href="pages/ch2c-projection.html">初出: 第2章c</a></dd>
+
+      <dt id="culling">カリング</dt>
+      <dd><span class="short">映らないものを早い段階で捨てて計算を省く考え方の総称。</span> クリップ、背面カリング、Meshletのパック単位カリングなど。 <a class="src" href="pages/ch2c-projection.html">初出: 第2章c</a></dd>
+
+      <dt id="cluster">クラスター</dt>
+      <dd><span class="short">Naniteの管理単位。128三角形の塊。</span> 多段精細度のピラミッド構造でSSDに保存される。 <a class="src" href="pages/ch6-nanite.html">初出: 第6章</a></dd>
+
+      <dt id="quad">クアッド（Quad）</dt>
+      <dd><span class="short">GPUが色計算を起動する最小単位、2×2の4ピクセルセット。</span> 隣のマスとの差分（テクスチャ縮小率など）の計算に必要なための鉄の掟。 <a class="src" href="pages/ch4-quad-overdraw.html">初出: 第4章</a></dd>
+
+      <dt id="quadoverdraw">クアッドオーバードロー</dt>
+      <dd><span class="short">極小三角形の密集により、同じクアッドで計算が何重にも実行される無駄。</span> 高密度ジオメトリ問題の正体。 <a class="src" href="pages/ch4-quad-overdraw.html">初出: 第4章</a></dd>
+
+      <dt id="gbuffer">G-Buffer</dt>
+      <dd><span class="short">画面全マスぶんの「素材」を保存する複数枚の画像セット。</span> 深度・法線・材質などを別レイヤーに保存する。1枚ではない。 <a class="src" href="pages/ch3a-gbuffer.html">初出: 第3章a</a></dd>
+
+      <dt id="compute">Compute Shader</dt>
+      <dd><span class="short">描画専用ではない「何でも計算係」のGPUプログラム。</span> Naniteのソフトウェア・ラスタライザーはこの上で動く。 <a class="src" href="pages/ch6-nanite.html">初出: 第6章</a></dd>
+
+      <dt id="fov">FOV（画角）</dt>
+      <dd><span class="short">視錐台の開き角。</span> 広いほど多く映るが1つ1つは小さく映る。FPSの設定項目のアレ。 <a class="src" href="pages/ch2c-projection.html">初出: 第2章c</a></dd>
+
+      <dt id="helper">ヘルパーピクセル</dt>
+      <dd><span class="short">三角形に触れていないのに、クアッドの掟で巻き添え計算されるマス。</span> 計算結果は画面に出力されず破棄される。 <a class="src" href="pages/ch4-quad-overdraw.html">初出: 第4章</a></dd>
+
+      <dt id="lighting">ライティングパス</dt>
+      <dd><span class="short">G-Bufferの素材に光を当て、各マスの最終色を決める工程。</span> 全マスで同時に実行される。 <a class="src" href="pages/ch3b-lighting.html">初出: 第3章b</a></dd>
+
+      <dt id="lod">LOD（Level of Detail）</dt>
+      <dd><span class="short">距離に応じて粗いモデルに差し替える伝統的な負荷対策。</span> 手作業での多段モデル用意が必要で、切り替え時にポップインが起きる。 <a class="src" href="pages/ch4-quad-overdraw.html">初出: 第4章</a></dd>
+
+      <dt id="meshlet">Meshlet（メッシュレット）</dt>
+      <dd><span class="short">モデルを最大64頂点・126三角形に事前分割した小分けパック。</span> GPUの内部高速メモリに乗り切るサイズ。DirectX 12 Ultimate / Vulkan世代のハードウェア規格。 <a class="src" href="pages/ch5-meshlet.html">初出: 第5章</a></dd>
+
+      <dt id="meshshader">メッシュシェーダー</dt>
+      <dd><span class="short">カリングを生き残ったパックをチーム単位で一気に処理する実行部隊。</span> <a class="src" href="pages/ch5-meshlet.html">初出: 第5章</a></dd>
+
+      <dt id="nanite">Nanite（ナナイト）</dt>
+      <dd><span class="short">UE5の仮想化ジオメトリシステム。</span> クラスターのピラミッド＋継続的LOD＋ソフトウェア・ラスタライザーの合わせ技で、事実上無制限のポリゴン数を実現。 <a class="src" href="pages/ch6-nanite.html">初出: 第6章</a></dd>
+
+      <dt id="nearfar">Near面 / Far面</dt>
+      <dd><span class="short">視錐台の手前と奥の壁。これより近い／遠いものは映さない。</span> Far面の位置＝ゲーム設定の「描画距離」。 <a class="src" href="pages/ch2c-projection.html">初出: 第2章c</a></dd>
+
+      <dt id="postprocess">ポストプロセス</dt>
+      <dd><span class="short">完成した2D画像への後処理（写真加工）。</span> ブルーム、被写界深度、カラーグレーディング等。コストは解像度に比例。 <a class="src" href="pages/ch3c-transparent-post.html">初出: 第3章c</a></dd>
+
+      <dt id="swraster">ソフトウェア・ラスタライザー</dt>
+      <dd><span class="short">GPU標準の描画ルートを使わず、Compute Shader上で自前実装した塗り処理。</span> クアッドの掟が及ばないため、微細三角形でも無駄が出ない。Naniteの飛び道具。 <a class="src" href="pages/ch6-nanite.html">初出: 第6章</a></dd>
+
+      <dt id="taskshader">タスクシェーダー</dt>
+      <dd><span class="short">Meshletパックのラベルだけを見て、開封前に要不要を仕分ける現場監督。</span> 視錐台・背面・サイズの3基準でパックごと破棄する。 <a class="src" href="pages/ch5-meshlet.html">初出: 第5章</a></dd>
+
+      <dt id="transform">Transform</dt>
+      <dd><span class="short">Position・Rotation・Scaleの3点セット。配置の指示書。</span> UnityやUEのインスペクタで毎日触っているアレの正体。 <a class="src" href="pages/ch2a-local-world.html">初出: 第2章a</a></dd>
+
+      <dt id="view">ビュー空間（カメラ空間）</dt>
+      <dd><span class="short">カメラを原点(0,0,0)とした座標系。</span> 「カメラが動く」の実体は、世界を逆向きに動かしてこの空間に変換すること。 <a class="src" href="pages/ch2b-view.html">初出: 第2章b</a></dd>
+
+      <dt id="viewmatrix">ビュー行列</dt>
+      <dd><span class="short">ワールド空間→ビュー空間の変換レシピカード。</span> カメラの位置と向きから作られる。 <a class="src" href="pages/ch2b-view.html">初出: 第2章b</a></dd>
+
+      <dt id="ztest">Zテスト</dt>
+      <dd><span class="short">同じマスに重なった三角形のうち、深度が手前のものを残す判定。</span> 「手前の物が奥の物を隠す」の実装。 <a class="src" href="pages/ch3a-gbuffer.html">初出: 第3章a</a></dd>
+
+    </dl>
+  </section>
+
+  <p class="next-preview"><a href="index.html">← 表紙（学習マップ）に戻る</a></p>
+</article>
+
+</body>
+</html>

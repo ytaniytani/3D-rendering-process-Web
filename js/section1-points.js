@@ -88,7 +88,9 @@ export function initSection1() {
     controlsHost.appendChild(group);
   });
 
-  controlsHost.appendChild(button("点1・点2・点3を結んで三角形を作る", () => makeTriangle(), true));
+  const triBtn = button("点1・点2・点3を結んで三角形を作る", () => makeTriangle(), true);
+  triBtn.id = "sec1-make-triangle";
+  controlsHost.appendChild(triBtn);
 
   registerLoop(canvasHost, () => {
     controls.update();

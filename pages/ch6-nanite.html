@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>第6章: Nanite | 3DCG描画のしくみ</title>
+<link rel="stylesheet" href="../css/style.css" />
+<script type="importmap">
+{ "imports": { "three": "../js/vendor/three/build/three.module.min.js", "three/addons/": "../js/vendor/three/examples/jsm/" } }
+</script>
+</head>
+<body>
+
+<article class="lesson">
+  <header class="lesson-head">
+    <p class="lesson-no">第6章（13ページ中の12ページ目・約15分）</p>
+    <h1>Nanite ― 全自動化と、クアッドの掟を破る「裏ルート」</h1>
+    <p class="lesson-sub">Unreal Engine 5の看板技術。なぜ数億ポリゴンを置いても平気なのか。答えは3つの仕組みの合わせ技です。</p>
+  </header>
+
+  <section class="recap">
+    <h2>⏪ 前のページの30秒復習</h2>
+    <ul>
+      <li>Meshlet＝モデルを事前に小分けパック化するハードウェア規格</li>
+      <li>タスクシェーダーが開封前にパックごと捨てる（働く前のカリング）</li>
+      <li>Meshletはエンジンの機能ではなく「新しい道路」（GPU側の土台）</li>
+    </ul>
+    <p class="recap-link"><a href="ch5-meshlet.html">→ 不安なら第5章を読み直す</a></p>
+  </section>
+
+  <section class="goals">
+    <h2>🎯 このページで分かること</h2>
+    <ul>
+      <li>MeshletとNaniteの関係（道路と自動運転網）が説明できるようになる</li>
+      <li>Naniteの3本柱: クラスターのピラミッド／継続的LOD／ソフトウェア・ラスタライザー</li>
+      <li>「クアッドの罠」をルールの外側から回避する、という発想の凄みが分かる</li>
+    </ul>
+  </section>
+
+  <section class="prose">
+
+    <h2>1. まず関係を整理する ― MeshletとNaniteは「層」が違う</h2>
+    <p>前のページの最後で強調した通り、Meshletは<strong>ハードウェア側の規格</strong>です。対して<strong>Nanite（ナナイト）はUnreal Engine 5というソフトウェアの機能</strong>。層がまったく違います。</p>
+    <div class="analogy">
+      <p><strong>Meshletが「新しく開通した高速道路」</strong>だとすれば、<strong>Naniteは「その道路の上に築かれた、完全自動運転の物流ネットワーク」</strong>です。道路があるだけでは荷物は勝手に届きません。どの荷物をいつどのルートで運ぶかを全自動で差配するシステムがあって初めて、「アーティストが何も考えなくても最適に運ばれる」世界になります。Naniteはその差配システムです。</p>
+    </div>
+    <p>Naniteは内部でMeshlet的な仕組み（塊単位の管理とカリング）をフル活用しつつ、その上に<strong>独自の3つの発明</strong>を重ねています。順に見ていきましょう。</p>
+
+    <h2>2. 発明その1: クラスターのピラミッドと「必要な分だけ読む」</h2>
+    <p>Naniteはモデルのインポート時に、三角形を<strong>128枚ずつの「クラスター」</strong>という塊に分解します（Meshletのパックとよく似た発想です）。そして、ここからが独自です。</p>
+    <p>元の最高精細クラスター群を段階的に束ねて簡略化し、<strong>「超高精細 → 高精細 → 中 → 低 → 超低精細」という多段のピラミッド構造</strong>を作って、まるごとSSDに保存します（この階層構造をDAGと呼びますが、名前は忘れてOKです）。</p>
+    <p>プレイ中は、カメラとの距離に応じて<strong>「今この瞬間、画面の解像度的に必要な段のクラスターだけ」</strong>をSSDからビデオメモリ（VRAM）に読み込みます。画面に映らない裏側のパーツ、遠すぎて見えない微細ディテールは、<strong>そもそもメモリに読み込みすらしない</strong>。だから数億ポリゴン級のシーンでもVRAMがパンクしないのです。</p>
+    <div class="analogy">
+      <p>地図アプリと同じです。日本全体を表示しているとき、あなたのスマホは全国の1軒1軒の建物データをダウンロードしていません。ズームレベルに応じた粗さのタイルだけを読んでいる。ズームインしたら、そのエリアの詳細タイルだけを追加で読む。<strong>Naniteは3Dモデルを「地図タイル化」した</strong>と言えます。</p>
+    </div>
+
+    <h2>3. 発明その2: 継続的LOD ― ポップインの消滅</h2>
+    <p>従来の負荷対策の定番は<strong>LOD</strong>でした。アーティストが「高・中・低」など数段階のモデルを別々に用意し、距離に応じてパッと差し替える方式です。しかしこの方式には宿命的な欠点がありました。差し替えの瞬間、モデルの見た目が急に変わる――<strong>ポップイン</strong>です。歩いていたら遠くの岩がカクッと形を変えた、あの現象です。</p>
+    <p>Naniteのピラミッドは数段階ではなく、<strong>クラスター単位の細かい階段が実質無数に</strong>あります。カメラが近づくと、モデル全体を差し替えるのではなく、<strong>必要な部分のクラスターだけが1段ずつ細かいものに入れ替わる</strong>。しかもその目標は常に「<strong>画面上で1ピクセル＝1ポリゴン程度の密度</strong>」に保つこと。</p>
+    <p>結果、どの距離から見ても「ちょうど必要なだけの細かさ」が滑らかに維持され、ポップインという現象自体が消滅します。そしてアーティストは<strong>LODモデルを手作業で作る仕事から解放されます</strong>。</p>
+
+    <h2>4. 発明その3: ソフトウェア・ラスタライザー ― 掟の外側へ</h2>
+    <p>ここがNaniteの一番の飛び道具です。第4章を思い出してください。クアッドの罠は、<strong>GPUのハードウェアに焼き付いた「4マス1組」の掟</strong>が原因でした。掟である以上、普通に描画ルートを通る限り、絶対に逃げられません。</p>
+    <p>Naniteの答えは、常識の外にありました。</p>
+    <div class="keypoint">
+      <p><strong>「三角形が画面上で数ピクセル未満まで小さくなったら、GPU標準の描画ルート（ハードウェア・ラスタライザー）を通すのをやめる。」</strong>代わりに、GPUの汎用計算ユニット（Compute Shader＝本来は物理演算などに使う「何でも計算係」）の上で、Naniteが自前でプログラミングした<strong>ソフトウェア・ラスタライザー</strong>を動かし、ピクセルを<strong>1マスずつ直接</strong>塗ります。自前の処理には4マス1組の掟が及ばないので、ヘルパーピクセルの無駄がゼロになるのです。</p>
+    </div>
+    <div class="analogy">
+      <p>「4人1組でしか注文を受けない食堂」が混雑して回らなくなったら、<strong>食堂を使うのをやめて、自前の弁当を1人ずつ配る</strong>――それがNaniteのやり方です。規則の中で工夫するのではなく、規則が適用されない場所へ仕事そのものを移してしまう。この大胆さがNaniteを特別にしています。</p>
+    </div>
+    <p>もちろん、大きな三角形（画面上で十分な面積を持つもの)には、ハードウェア・ラスタライザーの方が速いのでそのまま使います。つまりNaniteは<strong>三角形のサイズを見て、ハードウェアとソフトウェアの2つのルートを毎フレーム自動で使い分けるハイブリッド</strong>なのです。</p>
+
+    <h2>5. 触って確かめる</h2>
+    <p>下のデモでカメラ距離を近づけたり離したりすると、網の目（ワイヤーフレーム）の密度が自動で増減します（継続的LODの模式図）。<strong>「Nanite描画ルート可視化モード」</strong>をONにすると、大きな三角形の部分が<strong>青（ハードウェア・パス）</strong>、微細な部分が<strong>緑（ソフトウェア・パス）</strong>に色分けされます。「従来LOD比較」もONにすると、右側に旧方式の球が現れ、切り替えの瞬間に赤く光ります――あれがポップインです。</p>
+  </section>
+
+  <div class="demo-title"><span class="badge">DEMO</span><h3>ハイブリッド・ラスタライザー・シミュレーター</h3></div>
+  <div class="panel" id="sec6-app">
+    <div class="panel-controls" id="sec6-controls"></div>
+    <div class="panel-canvas" id="sec6-canvas"></div>
+  </div>
+  <div id="demo-checklist"></div>
+
+  <section class="prose">
+    <div class="misconception">
+      <p><strong>「Naniteを有効にすれば、どんなものでも無限に置ける」</strong>――万能ではありません。Naniteは基本的に「動かない不透明な物体」の技術です。半透明の物体、骨で変形するキャラクター、頻繁に形が変わるものには（バージョンが進んで対応が広がりつつあるものの）制約があります。「静的な背景・小物・地形のポリゴン数を事実上無制限にする技術」と捉えるのが現在のところ正確です。</p>
+    </div>
+
+    <h2>6. このページのまとめ</h2>
+    <ul>
+      <li>Meshlet＝道路（ハード）、Nanite＝その上の全自動物流網（ソフト）。層が違う</li>
+      <li><strong>クラスターのピラミッド</strong>: 多段精細度でSSDに保存し、必要な段だけVRAMへ（地図タイル方式）</li>
+      <li><strong>継続的LOD</strong>: クラスター単位で細かく入れ替え、常に「1ピクセル≒1ポリゴン」。ポップイン消滅、LOD手作業からの解放</li>
+      <li><strong>ソフトウェア・ラスタライザー</strong>: 微細な三角形はGPU標準ルートを通さず自前で1マスずつ塗る。<strong>クアッドの掟の外側</strong>へ</li>
+      <li>大きい三角形はハード、微細な三角形はソフトの<strong>ハイブリッド自動使い分け</strong></li>
+    </ul>
+  </section>
+
+  <section class="quiz" id="quiz"></section>
+
+  <section class="terms-box">
+    <h2>このページで出てきた用語</h2>
+    <dl>
+      <dt>Nanite（ナナイト）</dt><dd>UE5の仮想化ジオメトリシステム。クラスター管理＋継続的LOD＋SWラスタライザーの合わせ技。<a href="../glossary.html#nanite">用語集</a></dd>
+      <dt>クラスター</dt><dd>Naniteの管理単位。128三角形の塊。<a href="../glossary.html#cluster">用語集</a></dd>
+      <dt>ポップイン</dt><dd>LOD切り替えの瞬間にモデルの見た目がカクッと変わる現象。<a href="../glossary.html#popin">用語集</a></dd>
+      <dt>ソフトウェア・ラスタライザー</dt><dd>GPU標準の描画ルートを使わず、汎用計算ユニットで自前実装した塗り処理。<a href="../glossary.html#swraster">用語集</a></dd>
+      <dt>Compute Shader</dt><dd>描画専用ではない「何でも計算係」のGPUプログラム。<a href="../glossary.html#compute">用語集</a></dd>
+    </dl>
+  </section>
+
+  <p class="next-preview">▶ 最後のページでは、13ページの旅の全体を1枚の地図にまとめ、この変化がアーティストの仕事をどう変えるのかを話して締めくくります。卒業クイズ付き。</p>
+</article>
+
+<script type="module">
+  import { renderChrome, renderQuiz, tourButton, renderChecklist } from "../js/site.js";
+  import { initSection6 } from "../js/section6-nanite.js";
+
+  renderChrome();
+  initSection6();
+
+  renderChecklist("#demo-checklist", [
+    "距離を変えると、網の目の密度が自動で増減した（継続的LOD）",
+    "可視化モードで、ハードウェア=青／ソフトウェア=緑の使い分けを見た",
+    "従来LOD比較で、切り替え瞬間の赤い光（ポップイン）を見た",
+    "ピラミッド図で、距離に応じて読み込まれる段が変わるのを見た",
+  ]);
+
+  tourButton("#sec6-controls", [
+    { sel: "#sec6-distance", text: "カメラをゆっくり遠ざけます。網の目が自動で粗くなっていくのを見てください。常に「必要なだけの細かさ」を保つ継続的LODの動きです。", set: { sel: "#sec6-distance", value: 7.5 } },
+    { sel: "#sec6-distance", text: "今度は近づけます。網の目が細かく戻ります。どこにも「カクッ」という瞬間がないことに注目。", set: { sel: "#sec6-distance", value: 2.4 } },
+    { sel: "#sec6-viz", text: "Nanite描画ルート可視化モードをON。青=ハードウェア・パス、緑=ソフトウェア・パス。三角形のサイズで毎フレーム自動的に使い分けられます。", click: "#sec6-viz" },
+    { sel: "#sec6-compare", text: "最後に従来LOD比較をON。右の球は昔ながらの2段階LODです。距離スライダーを動かして、切り替えの瞬間に赤く光る「ポップイン」を体験してください。", click: "#sec6-compare" },
+  ]);
+
+  renderQuiz("#quiz", [
+    {
+      q: "MeshletとNaniteの関係として正しいのは？",
+      choices: ["同じものの別名", "Meshletはハードウェアの規格、NaniteはUE5のソフトウェアシステム", "NaniteはMeshletの旧称", "競合する2つのエンジン"],
+      a: 1,
+      exp: "Meshlet=新しい道路（ハード）、Nanite=その上の全自動物流網（ソフト）。NaniteはMeshlet的仕組みを土台として使います。",
+    },
+    {
+      q: "Naniteが数億ポリゴンのシーンでもVRAMをパンクさせない理由は？",
+      choices: ["ポリゴンを全部圧縮するから", "画面に必要な精細度のクラスターだけをSSDから読み込むから", "VRAMを2倍に増やすから", "ポリゴンを自動で削除するから"],
+      a: 1,
+      exp: "地図アプリのタイル読み込みと同じ発想。映らないもの・見えない細部は、メモリに読み込みすらしません。",
+    },
+    {
+      q: "微細な三角形に対してNaniteがクアッドの罠を回避する方法は？",
+      choices: ["クアッドを2×1に小さくする", "GPU標準の描画ルートを使わず、汎用計算ユニット上の自前ラスタライザーで1マスずつ塗る", "微細な三角形を表示しない", "解像度を下げる"],
+      a: 1,
+      exp: "規則の中で工夫するのではなく、規則（4マス1組の掟）が適用されない場所に仕事を移す。これがソフトウェア・ラスタライザーです。",
+    },
+  ]);
+</script>
+</body>
+</html>

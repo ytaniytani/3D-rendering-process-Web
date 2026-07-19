@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>第2章c: 投影とクリップ | 3DCG描画のしくみ</title>
+<link rel="stylesheet" href="../css/style.css" />
+<script type="importmap">
+{ "imports": { "three": "../js/vendor/three/build/three.module.min.js", "three/addons/": "../js/vendor/three/examples/jsm/" } }
+</script>
+</head>
+<body>
+
+<article class="lesson">
+  <header class="lesson-head">
+    <p class="lesson-no">第2章c（13ページ中の5ページ目・約12分）</p>
+    <h1>投影とクリップ ― 「映る範囲」を決め、遠近感を作る</h1>
+    <p class="lesson-sub">カメラは世界の全部を映せません。どこで、何を、どうやって切り捨てているのか。そして「遠くのものが小さく見える」魔法の正体。</p>
+  </header>
+
+  <section class="recap">
+    <h2>⏪ 前のページの30秒復習</h2>
+    <ul>
+      <li>CGのカメラは原点に固定。世界の方を逆向きに動かす（ビュー変換）</li>
+      <li>変換後の「カメラから見た住所」の座標系がビュー空間</li>
+      <li>ビュー変換は毎フレーム・全頂点に行われる</li>
+    </ul>
+    <p class="recap-link"><a href="ch2b-view.html">→ 不安なら第2章bを読み直す</a></p>
+  </section>
+
+  <section class="goals">
+    <h2>🎯 このページで分かること</h2>
+    <ul>
+      <li>視錐台（しすいだい）＝「画面に映る範囲の箱」の形と6枚の壁が分かる</li>
+      <li>FOV・Near・Farという3つのカメラ設定の意味が分かる</li>
+      <li>「遠くのものが小さく見える」処理がこの工程で作られると分かる</li>
+    </ul>
+  </section>
+
+  <section class="prose">
+
+    <h2>1. 問題提起: カメラは全部を映せない</h2>
+    <p>あなたの視界を考えてみてください。前は見えますが、後ろは見えません。視界の端より外も見えません。そして遠すぎるもの（例えば1km先の小石）は、あっても見えないのと同じです。</p>
+    <p>CGのカメラも同じで、<strong>世界のすべてを画面に映すことはできないし、映すべきでもありません</strong>。映らないものに計算を使うのは純粋な無駄だからです。そこでGPUは、ビュー空間に変換された世界に対して「ここからここまでが映る範囲です」という<strong>境界線</strong>を引きます。</p>
+
+    <h2>2. 視錐台 ― 映る範囲の「箱」</h2>
+    <p>その境界線の形は、<strong>ピラミッドの頭を切り落とした形</strong>をしています。カメラのレンズを頂点として、前方に向かって四角く広がっていく形。これを<strong>視錐台（しすいだい）</strong>、英語でFrustum（フラスタム）と呼びます。</p>
+
+    <div class="analogy">
+      <p>暗い部屋で懐中電灯をつけたときの、光の広がりを思い浮かべてください。手元から遠くに向かって四角錐状に広がっていく光の範囲――あの形が視錐台です。光が当たっている範囲＝画面に映る範囲、光の外＝映らない範囲です。</p>
+    </div>
+
+    <p>視錐台は6枚の「壁」でできています。上下左右の4枚の斜めの壁と、あと2枚。この2枚が重要です。</p>
+    <ul>
+      <li><strong>Near面（近クリップ面）</strong> ― カメラのすぐ手前にある壁。<strong>これより近いものは映さない</strong></li>
+      <li><strong>Far面（遠クリップ面）</strong> ― 遠くにある壁。<strong>これより遠いものは映さない</strong></li>
+    </ul>
+
+    <h3>なぜ手前まで切るのか？</h3>
+    <p>「遠くを切るのは分かるけど、なぜ近くまで？」と思いますよね。理由は、カメラにめり込むほど近いものを描こうとすると計算が破綻するからです。ゲームで壁に密着したとき、壁が消えて向こう側が見えた経験はありませんか？　あれは壁がNear面より手前に来て、切り捨てられた瞬間です。</p>
+
+    <h3>なぜ遠くを切るのか？</h3>
+    <p>無限の遠くまで計算することは物理的に不可能だからです。ゲームの設定画面にある「描画距離（ドロー距離）」は、まさに<strong>このFar面の位置</strong>のこと。遠くの建物が急に現れる「あの現象」は、建物がFar面の内側に入ってきた瞬間なのです。</p>
+
+    <h2>3. FOV（画角）― 箱の開き具合</h2>
+    <p><strong>FOV（Field of View・画角）</strong>は、視錐台が左右にどれだけ大きく開くかという角度です。</p>
+    <ul>
+      <li><strong>FOVを広げる</strong>（広角）→ 多くのものが映る。ただし1つ1つは小さくなり、端が引き伸ばされたような迫力ある絵に</li>
+      <li><strong>FOVを狭める</strong>（望遠）→ 映る範囲は狭いが、遠くのものが大きく映る。ズームレンズの効果</li>
+    </ul>
+    <p>FPSゲームの設定にある「FOV」スライダーはこれです。90°前後が標準、120°にすると視界は広いが酔いやすい――あの感覚の正体が、視錐台の開き角だったわけです。</p>
+
+    <h2>4. 遠近感はここで生まれる</h2>
+    <p>このページで一番大事な話です。「遠くのものが小さく見える」――当たり前すぎて意識もしない現象ですが、CGでは<strong>誰かがこの効果をわざわざ計算で作っています</strong>。その計算がこの工程、<strong>投影（プロジェクション）</strong>です。</p>
+    <div class="keypoint">
+      <p>投影の計算は、イメージとしては<strong>「台形の視錐台を、正面からグシャッと押し潰して、まっすぐな直方体に変形させる」</strong>操作です。奥に行くほど広い台形を無理やり長方形に押し込むので、<strong>奥にあるものほど強く縮みます</strong>。この「奥ほど縮む」がそのまま遠近感（パースペクティブ）になるのです。下のデモの「押し潰しアニメーション」で、この変形を実際に見られます。</p>
+    </div>
+    <p>この押し潰しを行うレシピカードが<strong>プロジェクション行列</strong>です。ワールド行列、ビュー行列に続いて3枚目のカードですが、やっていることは同じ「全頂点への一斉適用」。もうお馴染みですね。</p>
+
+    <h2>5. クリップ ― 箱の外を捨てる</h2>
+    <p>押し潰しが終わった座標系を<strong>クリップ空間</strong>と呼びます。名前の由来は<strong>クリッピング＝切り捨て</strong>。視錐台（押し潰し後は直方体）の外にはみ出した頂点を、ここでバッサリ捨てます。</p>
+    <p>大事なのは捨てるタイミングです。<strong>描画が始まる前に捨てる</strong>。映らないと分かっているものに、それ以降の工程（ラスタライズ、色塗り）を一切走らせない。この「早めに捨てて無駄を省く」という考え方には<strong>カリング（Culling・間引き）</strong>という名前が付いています。</p>
+    <p>この言葉、ぜひ覚えておいてください。<strong>第5章のMeshletは、このカリングを極限まで進化させた技術</strong>です。ここで種をまいておきます。</p>
+
+    <h2>6. 触って確かめる</h2>
+    <p>下のデモで、FOV・Near・Farの3つのスライダーを動かしてください。右画面（神の視点）にオレンジの線で視錐台が表示されています。<strong>箱の外に出た物体は赤くハイライトされ、左画面から消えます</strong>。これがクリップです。</p>
+  </section>
+
+  <div class="demo-title"><span class="badge">DEMO</span><h3>視錐台シミュレーター（FOV / Near / Far / 押し潰し）</h3></div>
+  <div class="panel" id="sec2c-app">
+    <div class="panel-controls" id="sec2c-controls"></div>
+    <div class="panel-canvas dual" id="sec2c-canvas"></div>
+  </div>
+  <div id="demo-checklist"></div>
+
+  <section class="prose">
+    <div class="misconception">
+      <p><strong>「Farを遠くに伸ばしても、見た目が同じならタダ」</strong>――タダではありません。Far面を遠くへ動かすと視錐台の体積が増え、箱の中に入る物体（＝クリップを生き残って描画に進む物体）が増えます。描画距離を2倍にすると、処理すべき物体数は下手をすると何倍にもなります。「映る範囲を広げる＝仕事を増やす」は常にセットです。</p>
+    </div>
+
+    <h2>7. このページのまとめ</h2>
+    <ul>
+      <li><strong>視錐台</strong>＝映る範囲の箱。上下左右4枚＋Near面＋Far面の6枚の壁</li>
+      <li><strong>FOV</strong>＝箱の開き角。広角/望遠の正体</li>
+      <li>投影＝<strong>台形の箱を直方体に押し潰す</strong>操作。奥ほど縮む→これが遠近感</li>
+      <li>箱の外の頂点は描画前に捨てられる（<strong>クリップ</strong>）。早めに捨てる思想＝<strong>カリング</strong>（第5章の伏線）</li>
+    </ul>
+  </section>
+
+  <section class="quiz" id="quiz"></section>
+
+  <section class="terms-box">
+    <h2>このページで出てきた用語</h2>
+    <dl>
+      <dt>視錐台（しすいだい）／Frustum</dt><dd>カメラに映る範囲を表す、頭を切ったピラミッド型の箱。<a href="../glossary.html#frustum">用語集</a></dd>
+      <dt>FOV（画角）</dt><dd>視錐台の開き角。広いほど多く映るが1つ1つは小さく映る。<a href="../glossary.html#fov">用語集</a></dd>
+      <dt>Near面 / Far面</dt><dd>これより近い/遠いものを映さない、という2枚の壁。<a href="../glossary.html#nearfar">用語集</a></dd>
+      <dt>クリップ空間</dt><dd>投影（押し潰し）後の座標系。箱の外の頂点はここで切り捨てられる。<a href="../glossary.html#clip">用語集</a></dd>
+      <dt>カリング</dt><dd>映らないものを早い段階で捨てて計算を省く考え方の総称。<a href="../glossary.html#culling">用語集</a></dd>
+    </dl>
+  </section>
+
+  <p class="next-preview">▶ 次のページは第2章のクライマックス。生き残った三角形が、ついにディスプレイの「マス目」に変換されます。頂点の旅、終着駅へ。</p>
+</article>
+
+<script type="module">
+  import { renderChrome, renderQuiz, tourButton, renderChecklist } from "../js/site.js";
+  import { initSection2c } from "../js/section2-spaces.js";
+
+  renderChrome();
+  initSection2c();
+
+  renderChecklist("#demo-checklist", [
+    "FOVを広げると視錐台が横に開き、映る物が増えるのを見た",
+    "Farを手前に動かすと、遠くの物体が赤くなって左画面から消えるのを見た",
+    "「押し潰しアニメーション」で、奥の物ほど縮む様子を見た",
+    "カウンターでクリップされた物体の数を確認した",
+  ]);
+
+  tourButton("#sec2c-controls", [
+    { sel: "#sec2c-canvas", text: "右画面のオレンジの枠が視錐台です。まずはこの形（頭を切ったピラミッド）を確認してください。" },
+    { sel: "#sec2c-fov", text: "FOVを広げます。箱が横に大きく開き、左画面に映る物が増えます。", set: { sel: "#sec2c-fov", value: 100 } },
+    { sel: "#sec2c-far", text: "次にFar面を手前へ。箱の外に出た物体が赤くハイライトされ、左画面から消えます。これがクリップです。", set: { sel: "#sec2c-far", value: 12 } },
+    { sel: "#sec2c-flatten", text: "最後に「押し潰しアニメーション」。台形の箱が直方体に正規化され、奥の物ほど縮む＝遠近感の誕生です。", click: "#sec2c-flatten" },
+  ]);
+
+  renderQuiz("#quiz", [
+    {
+      q: "ゲーム設定の「描画距離」を縮めることは、視錐台のどの操作にあたる？",
+      choices: ["FOVを狭める", "Near面を遠くへ動かす", "Far面を手前へ動かす", "視錐台を消す"],
+      a: 2,
+      exp: "描画距離＝Far面の位置。手前に動かすと遠くの物がクリップされて消え、そのぶん計算が軽くなります。",
+    },
+    {
+      q: "「遠くのものが小さく見える」効果がCGで作られるのはどの工程？",
+      choices: ["ローカル→ワールド変換", "投影（視錐台を直方体に押し潰す工程）", "ラスタライズ", "ポストプロセス"],
+      a: 1,
+      exp: "台形の視錐台を直方体に押し潰すとき、奥にあるものほど強く縮む――これが遠近感の正体です。",
+    },
+    {
+      q: "「カリング」とは何をする考え方？",
+      choices: ["画質を上げる", "映らないものを早い段階で捨てて計算を省く", "色を混ぜる", "頂点を増やして滑らかにする"],
+      a: 1,
+      exp: "映らないと分かったものを早めに捨てる思想の総称。クリップはその一例で、第5章のMeshletはこれを極限まで進めた技術です。",
+    },
+  ]);
+</script>
+</body>
+</html>

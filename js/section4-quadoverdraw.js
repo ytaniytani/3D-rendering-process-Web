@@ -1,4 +1,5 @@
 import { el, slider, button, meter } from "./ui.js";
+import { THREE, makeScene, registerLoop } from "./three-common.js";
 
 export function initSection4() {
   const host = document.getElementById("sec4-canvas");
@@ -6,9 +7,32 @@ export function initSection4() {
   if (!host) return;
   host.innerHTML = "";
 
+  // 上段: 実際の3Dビュー（岩が遠ざかって米粒になる） / 下段: クアッド拡大図
+  const topStrip = el("div", { style: "height:30%;border-bottom:1px solid var(--border);position:relative;" });
+  const topLabel = el("div", { class: "sub-label" }, "実際の画面: 岩は遠ざかると米粒になる（でも頂点計算はフルに走る）");
+  topStrip.appendChild(topLabel);
+  const bottomWrap = el("div", { style: "height:70%;position:relative;" });
+  bottomWrap.appendChild(el("div", { class: "sub-label" }, "GPU内部: 2×2クアッドの拡大図"));
+  host.style.display = "flex";
+  host.style.flexDirection = "column";
+  host.append(topStrip, bottomWrap);
+
   const canvas = el("canvas", {});
-  host.appendChild(canvas);
+  bottomWrap.appendChild(canvas);
   const ctx = canvas.getContext("2d");
+
+  // 3D 岩ビュー
+  const rockView = makeScene(topStrip, { camPos: [0, 0.5, 3], grid: false });
+  rockView.controls.enabled = false;
+  const rock = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(0.8, 3),
+    new THREE.MeshStandardMaterial({ color: 0x8d8f95, flatShading: true })
+  );
+  rockView.scene.add(rock);
+  registerLoop(topStrip, () => {
+    rock.rotation.y += 0.004;
+    rockView.renderer.render(rockView.scene, rockView.camera);
+  });
 
   let distance = 20; // 0 (near) - 100 (far)
   let triCount = 1;
@@ -21,11 +45,12 @@ export function initSection4() {
   }
 
   function resize() {
-    const w = host.clientWidth, h = host.clientHeight;
+    const w = bottomWrap.clientWidth, h = bottomWrap.clientHeight;
+    if (!w || !h) return;
     canvas.width = w; canvas.height = h;
     draw(-1);
   }
-  new ResizeObserver(resize).observe(host);
+  new ResizeObserver(resize).observe(bottomWrap);
 
   // 2x2 quad occupies a big central area; each of 4 cells subdivided visually
   function cellRects() {
@@ -103,25 +128,44 @@ export function initSection4() {
     loadMeter.setValue(pct);
   }
 
-  controlsHost.appendChild(
-    slider({
-      label: "カメラ距離（近景 → 遠景）",
-      min: 0,
-      max: 100,
-      step: 1,
-      value: distance,
-      onInput: (v) => {
-        distance = v;
-        triCount = trisFromDistance(distance);
-        wastedTotal = 0; usefulTotal = 0;
-        wastedLabel.textContent = "無駄なピクセル計算: 0 回";
-        usefulLabel.textContent = "有効な描画: 0 回";
-        updateMeter();
-        draw(-1);
-      },
-    })
-  );
-  controlsHost.appendChild(button("描画開始（スロー再生）", () => play(), true));
+  const distSlider = slider({
+    label: "カメラ距離（近景 → 遠景）",
+    min: 0,
+    max: 100,
+    step: 1,
+    value: distance,
+    onInput: (v) => {
+      distance = v;
+      triCount = trisFromDistance(distance);
+      wastedTotal = 0; usefulTotal = 0; stepIdx = -1;
+      wastedLabel.textContent = "無駄なピクセル計算: 0 回";
+      usefulLabel.textContent = "有効な描画: 0 回";
+      updateMeter();
+      draw(-1);
+      // 3D岩ビューを連動: 距離0で画面いっぱい、100で米粒
+      rockView.camera.position.z = 1.6 + (v / 100) * 28;
+    },
+  });
+  distSlider.querySelector("input").id = "sec4-distance";
+  controlsHost.appendChild(distSlider);
+  const playBtn = button("描画開始（スロー再生）", () => play(), true);
+  playBtn.id = "sec4-play";
+  controlsHost.appendChild(playBtn);
+
+  // 1枚ずつ進めるステップ実行
+  let stepIdx = -1;
+  const stepBtn = button("1枚ずつ進める", () => {
+    if (running) return;
+    stepIdx++;
+    if (stepIdx >= triCount) { stepIdx = -1; draw(-1); return; }
+    draw(stepIdx);
+    usefulTotal += 1;
+    wastedTotal += 3;
+    wastedLabel.textContent = `無駄なピクセル計算: ${wastedTotal} 回（三角形 ${stepIdx + 1}/${triCount} 枚目）`;
+    usefulLabel.textContent = `有効な描画: ${usefulTotal} 回`;
+  });
+  stepBtn.id = "sec4-step";
+  controlsHost.appendChild(stepBtn);
   controlsHost.appendChild(el("div", { class: "vgroup" }, [
     el("div", { class: "vgroup-title" }, "GPU負荷メーター"),
     loadMeter,
@@ -154,5 +198,6 @@ export function initSection4() {
 
   triCount = trisFromDistance(distance);
   updateMeter();
+  rockView.camera.position.z = 1.6 + (distance / 100) * 28;
   resize();
 }

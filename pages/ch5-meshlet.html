@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>第5章: Meshlet | 3DCG描画のしくみ</title>
+<link rel="stylesheet" href="../css/style.css" />
+<script type="importmap">
+{ "imports": { "three": "../js/vendor/three/build/three.module.min.js", "three/addons/": "../js/vendor/three/examples/jsm/" } }
+</script>
+</head>
+<body>
+
+<article class="lesson">
+  <header class="lesson-head">
+    <p class="lesson-no">第5章（13ページ中の11ページ目・約12分）</p>
+    <h1>Meshlet ― 頂点を「塊」で仕分ける、ハードウェアの新常識</h1>
+    <p class="lesson-sub">計算してから捨てるのでは遅い。計算が始まる前に、箱ごと捨てる。DirectX 12 Ultimate / Vulkan世代の答えです。</p>
+  </header>
+
+  <section class="recap">
+    <h2>⏪ 前のページの30秒復習</h2>
+    <ul>
+      <li>頂点の仕事は見た目と無関係にフルで走る（頂点の罰）</li>
+      <li>GPUは2×2クアッド単位でしか塗れず、極小三角形の密集で重複計算が爆発（クアッドの罰）</li>
+      <li>高精細モデルの遠景表示はこの二重の罰を受ける</li>
+    </ul>
+    <p class="recap-link"><a href="ch4-quad-overdraw.html">→ 不安なら第4章を読み直す</a></p>
+  </section>
+
+  <section class="goals">
+    <h2>🎯 このページで分かること</h2>
+    <ul>
+      <li>Meshlet＝モデルを事前に「小分けパック」にしておく発想だと分かる</li>
+      <li>タスクシェーダー（現場監督）とメッシュシェーダー（実行部隊）の役割分担が分かる</li>
+      <li>「頂点計算が始まる前に塊ごと捨てる」ことがなぜ決定的なのかが分かる</li>
+    </ul>
+  </section>
+
+  <section class="prose">
+
+    <h2>1. 問題の整理と、発想の転換</h2>
+    <p>第4章の悲劇の根っこを一言で言うと、こうです。<strong>従来のGPUは、頂点を「1個ずつ律儀に」処理する行列（ぎょうれつ）方式だった。</strong></p>
+    <p>クリップ（第2章c）で頂点を捨てる仕組みはありました。でもクリップが行われるのは、<strong>頂点変換がすでに終わった後</strong>です。つまり「変換の計算をフルにやってから、要らないと分かって捨てる」。捨てるにしても、働いた後。これでは頂点の罰は防げません。</p>
+    <p>そこでDirectX 12 UltimateとVulkanの世代で、グラフィックボードの<strong>ハードウェアそのもの</strong>に新しい仕組みが導入されました。発想はこうです。</p>
+    <div class="keypoint">
+      <p><strong>荷物を1個ずつ検品するのをやめよう。最初から荷物を「箱」に詰めておいて、箱のラベルだけ見て「この箱は全部要らない」と分かったら、開封すらせずに捨てよう。</strong></p>
+    </div>
+
+    <h2>2. Meshlet ― 小分けパックの正体</h2>
+    <p>その「箱」にあたるのが<strong>Meshlet（メッシュレット）</strong>です。ゲームのビルド時（事前準備の段階）に、巨大なモデルを自動で細切れに分割しておきます。1パックの大きさは規格で決まっていて、<strong>最大64頂点・最大126三角形</strong>。</p>
+    <p>なぜこの半端なサイズかというと、<strong>GPUの「手元の作業机」（超高速な内部メモリ）にちょうど乗り切る大きさ</strong>だからです。作業机に乗り切る量なら、遠くの倉庫（メインのビデオメモリ）に取りに行く待ち時間なしで、一気に処理できます。</p>
+    <div class="analogy">
+      <p>倉庫のコンテナを思い浮かべてください。荷物をバラバラに保管するのではなく、規格サイズのコンテナに詰めて管理する。コンテナには「中身: 岩の左上部分、64個」とラベルが貼ってある。<strong>クレーン（GPU）はコンテナ単位で持ち上げ、コンテナ単位で捨てられる</strong>。物流の世界がコンテナで革命を起こしたのと同じことが、頂点処理で起きたのです。</p>
+    </div>
+
+    <h2>3. タスクシェーダー ― 開封前に判断する「現場監督」</h2>
+    <p>パック詰めしただけでは速くなりません。主役は、パックを<strong>開封する前に</strong>要不要を判断する新しい担当者――<strong>タスクシェーダー</strong>です。</p>
+    <p>タスクシェーダーは毎フレーム、全パックのラベル（パックの位置や大きさのまとめ情報）だけを見て、高速に仕分けします。判断基準は主に3つ:</p>
+    <ol>
+      <li><strong>「このパック、カメラの後ろだ」</strong> → 捨てる（視錐台カリング。第2章cの応用）</li>
+      <li><strong>「このパック、モデルの裏側で絶対に見えない」</strong> → 捨てる（背面カリング）</li>
+      <li><strong>「このパック、遠すぎて画面上で1ピクセル未満にしかならない」</strong> → 捨てる（サイズカリング）</li>
+    </ol>
+    <p>ここで決定的に大事なのは、捨てるタイミングです。<strong>パックの中の頂点は、まだ1個も計算されていません。</strong>ラベルを見ただけで、64頂点×126三角形がまるごと、変換もラスタライズもクアッド計算も、<em>何も始まらないうちに</em>消えるのです。</p>
+    <div class="keypoint">
+      <p>第4章の「頂点の罰」は<strong>働いた後に捨てていた</strong>から重かった。Meshletは<strong>働く前に箱ごと捨てる</strong>。そして箱ごと捨てられた極小三角形はラスタライザーに到達しないので、<strong>クアッドの罰もそもそも発生しない</strong>。二重の罰を、入り口で両方ブロックするのです。</p>
+    </div>
+
+    <h2>4. メッシュシェーダー ― 生き残ったパックの「実行部隊」</h2>
+    <p>監督の仕分けを通過した「本当に描くべきパック」だけが、<strong>メッシュシェーダー</strong>に渡されます。役割は従来の頂点処理と同じ（頂点の旅の5駅を進める）ですが、担当単位が変わりました。</p>
+    <p>従来: 頂点1個ずつを行列に並ばせて処理。<br>
+    メッシュシェーダー: <strong>パック1箱を、GPUの並列部隊（数十スレッドのチーム）にまるごと割り当てて、一気に処理。</strong></p>
+    <p>「1個ずつの行列」から「箱ごとのチーム作業」へ。処理の中身は同じでも、<em>仕事の渡し方</em>が根本から変わったのが、この世代のハードウェア刷新です。</p>
+
+    <h2>5. 触って確かめる</h2>
+    <p>下のデモで「次世代 Meshletパイプライン」に切り替えると、岩のモデルが<strong>カラフルなパッチワーク</strong>になります。1色=1パック（Meshlet）です。そのままドラッグでモデルを回してみてください。<strong>裏側に回ったパックが、塊ごとパチパチ消えます</strong>。あれがタスクシェーダーのカリングです。カメラ距離を遠ざけたときの負荷メーターの動きを、「従来パイプライン」と見比べてください。</p>
+  </section>
+
+  <div class="demo-title"><span class="badge">DEMO</span><h3>Meshletカリング・ビューワー（従来 vs 次世代 切り替え）</h3></div>
+  <div class="panel" id="sec5-app">
+    <div class="panel-controls" id="sec5-controls"></div>
+    <div class="panel-canvas" id="sec5-canvas"></div>
+  </div>
+  <div id="demo-checklist"></div>
+
+  <section class="prose">
+    <div class="misconception">
+      <p><strong>「Meshletは特定のゲームエンジンの機能」</strong>――違います。Meshletとメッシュシェーダーは<strong>グラフィックボード（ハードウェア）側の規格</strong>です。DirectX 12 Ultimate対応GPUやVulkan拡張対応GPUなら、UEでもUnityでも自作エンジンでも、この仕組みの上に乗れます。「土台の道路が新しくなった」のであって、「特定の車が速くなった」のではありません。この区別は次章のNaniteの理解に直結します。</p>
+    </div>
+
+    <h2>6. このページのまとめ</h2>
+    <ul>
+      <li>従来の弱点＝頂点を1個ずつ処理し、<strong>計算後にしか捨てられない</strong>こと</li>
+      <li><strong>Meshlet</strong>＝ビルド時にモデルを最大64頂点/126三角形の小分けパックに分割したもの。GPUの作業机に乗るサイズ</li>
+      <li><strong>タスクシェーダー（現場監督）</strong>がラベルだけ見て、開封前にパックごと捨てる（視錐台・背面・サイズの3基準）</li>
+      <li><strong>メッシュシェーダー（実行部隊）</strong>が生き残ったパックをチーム単位で並列処理</li>
+      <li>働く前に捨てるから、<strong>頂点の罰もクアッドの罰も入り口でブロック</strong>される</li>
+    </ul>
+  </section>
+
+  <section class="quiz" id="quiz"></section>
+
+  <section class="terms-box">
+    <h2>このページで出てきた用語</h2>
+    <dl>
+      <dt>Meshlet（メッシュレット）</dt><dd>モデルを最大64頂点・126三角形に事前分割した小分けパック。<a href="../glossary.html#meshlet">用語集</a></dd>
+      <dt>タスクシェーダー</dt><dd>パックのラベルだけ見て、開封前に要不要を仕分ける現場監督。<a href="../glossary.html#taskshader">用語集</a></dd>
+      <dt>メッシュシェーダー</dt><dd>生き残ったパックをチーム単位で一気に処理する実行部隊。<a href="../glossary.html#meshshader">用語集</a></dd>
+      <dt>背面カリング</dt><dd>モデルの裏側など、絶対に見えない面を捨てる間引き。<a href="../glossary.html#backface">用語集</a></dd>
+    </dl>
+  </section>
+
+  <p class="next-preview">▶ 最終技術章へ。この新しい道路（Meshlet）の上に、Unreal Engine 5が築き上げた完全自動の物流網――Nanite。しかもGPUの鉄の掟「クアッド」すら回避する裏ルート付きです。</p>
+</article>
+
+<script type="module">
+  import { renderChrome, renderQuiz, tourButton, renderChecklist } from "../js/site.js";
+  import { initSection5 } from "../js/section5-meshlet.js";
+
+  renderChrome();
+  initSection5();
+
+  renderChecklist("#demo-checklist", [
+    "Meshletモードで、モデルがカラフルなパッチワーク（1色=1パック）になった",
+    "ドラッグで回すと、裏側のパックが塊ごと消えるのを見た（監督のログも流れた）",
+    "距離を遠ざけると、小さすぎるパックが根元からカットされた",
+    "従来モードでは負荷が常に100%なのに、Meshletモードでは見える分だけに下がった",
+  ]);
+
+  tourButton("#sec5-controls", [
+    { sel: "#sec5-tab-legacy", text: "まず従来モード。負荷メーターを見てください。どの角度から見ても、全500三角形がフルに処理されています。", click: "#sec5-tab-legacy" },
+    { sel: "#sec5-tab-meshlet", text: "次世代Meshletパイプラインに切り替えます。モデルがパッチワーク状に！ 1色が1つの小分けパックです。", click: "#sec5-tab-meshlet" },
+    { sel: "#sec5-canvas", text: "モデルをドラッグで回してみてください。裏側に回ったパックが塊ごと消え、監督の判断ログが流れます。頂点計算が始まる前の破棄です。" },
+    { sel: "#sec5-distance", text: "カメラを遠ざけます。「遠すぎて1ピクセル未満」のパックが次々カットされ、負荷メーターは低いまま。これがMeshletの効果です。", set: { sel: "#sec5-distance", value: 12 } },
+  ]);
+
+  renderQuiz("#quiz", [
+    {
+      q: "Meshletの1パックの規格サイズは？",
+      choices: ["最大8頂点・8三角形", "最大64頂点・126三角形", "最大1万頂点・1万三角形", "無制限"],
+      a: 1,
+      exp: "GPUの「手元の作業机」（高速内部メモリ）にちょうど乗り切るサイズとして、最大64頂点・126三角形が標準です。",
+    },
+    {
+      q: "タスクシェーダーがパックを捨てる判断をするのはいつ？",
+      choices: ["頂点変換がすべて終わった後", "ラスタライズの後", "パック内の頂点計算が始まる前", "画面に表示された後"],
+      a: 2,
+      exp: "ラベル（まとめ情報）だけ見て開封前に捨てるのが核心。だから頂点の罰もクアッドの罰も入り口でブロックできます。",
+    },
+    {
+      q: "Meshlet/メッシュシェーダーはどの層の技術？",
+      choices: ["特定のゲームエンジンの機能", "グラフィックボード（ハードウェア）側の規格", "モデリングソフトのプラグイン", "OSの設定項目"],
+      a: 1,
+      exp: "DirectX 12 Ultimate / Vulkan拡張世代のGPUハードウェアの規格。どのエンジンからでも使える「新しい道路」です。",
+    },
+  ]);
+</script>
+</body>
+</html>

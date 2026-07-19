@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>第3章b: ライティングパス | 3DCG描画のしくみ</title>
+<link rel="stylesheet" href="../css/style.css" />
+<script type="importmap">
+{ "imports": { "three": "../js/vendor/three/build/three.module.min.js", "three/addons/": "../js/vendor/three/examples/jsm/" } }
+</script>
+</head>
+<body>
+
+<article class="lesson">
+  <header class="lesson-head">
+    <p class="lesson-no">第3章b（13ページ中の8ページ目・約10分）</p>
+    <h1>ライティングパス ― 素材に光を当てる</h1>
+    <p class="lesson-sub">バットに並んだ素材（G-Buffer）に、いよいよ火を通します。1マスぶんの光の計算を「日本語」で読んでみましょう。</p>
+  </header>
+
+  <section class="recap">
+    <h2>⏪ 前のページの30秒復習</h2>
+    <ul>
+      <li>現代ゲームは素材を先に保存する（G-Buffer）＝料理の下ごしらえ</li>
+      <li>素材は3種類: 深度（距離）、法線（表面の向き）、材質（地の色など）</li>
+      <li>G-Bufferには「最終的に見えているマス」だけが残っている</li>
+    </ul>
+    <p class="recap-link"><a href="ch3a-gbuffer.html">→ 不安なら第3章aを読み直す</a></p>
+  </section>
+
+  <section class="goals">
+    <h2>🎯 このページで分かること</h2>
+    <ul>
+      <li>1マスぶんの照明計算が「日本語の判断文」で理解できる</li>
+      <li>GPUが得意な「同じ作業の超並列」の感覚がつかめる</li>
+      <li>影（シャドウ）が「光源から見た深度画像」で決まると分かる</li>
+    </ul>
+  </section>
+
+  <section class="prose">
+
+    <h2>1. 下ごしらえした素材に、火を通す</h2>
+    <p>前のページで、画面の全マスに「素材袋」が用意されました。深度、法線、材質。ここからが調理――<strong>ライティングパス</strong>です。</p>
+    <p>やることは1つ。<strong>画面のマスを1つ選び、素材袋を開けて、光を当てたらどう見えるかを計算し、最終的な色を決める。</strong>これを全マスで行うだけです。</p>
+
+    <h2>2. 1マスぶんの照明計算を、日本語で読む</h2>
+    <p>数式は使わないと約束したので、GPUがやっている判断を、そのまま日本語に翻訳してみます。あるマスの色を決めるとき、GPUはだいたいこんな「文章」を実行しています。</p>
+    <ol>
+      <li>「このマスの素材袋を開ける。<strong>法線は上向き</strong>。地の色は赤。ラフネスは高め（マット）」</li>
+      <li>「今、太陽は<strong>右上</strong>にある」</li>
+      <li>「上向きの面に右上からの光……ほぼ正面から光が当たる角度だ。<strong>明るくしよう</strong>」</li>
+      <li>「地の色は赤だから、明るい赤に」</li>
+      <li>「ラフネスが高いから、テカリ（ハイライト）は弱めに」</li>
+      <li>「よし、このマスの最終色は<strong>少し温かみのある明るい赤</strong>」</li>
+    </ol>
+    <p>魔法でも何でもなく、<strong>素材袋の中身と光源の情報を突き合わせる「判断の連続」</strong>です。法線が光源の方を向いているほど明るい。逆を向いていれば暗い。地の色と混ぜて出来上がり。これが照明計算のすべての骨格です。</p>
+
+    <h2>3. これを、全マスで「一斉に」やる</h2>
+    <p>フルHDの画面には約200万個のマスがあります。GPUはこの200万件の判断を、1件ずつ順番に…ではなく、<strong>ほぼ同時に</strong>実行します。</p>
+    <div class="analogy">
+      <p><strong>CPUは少数精鋭の熟練職人</strong>です。複雑で込み入った仕事を数人で順番にこなす。<strong>GPUは数千人の単純作業アルバイト</strong>です。1人ひとりは単純な判断しかできませんが、「このマスの色を決めて」という同じ形の仕事を、数千人が同時にこなします。照明計算は「全マスで同じ判断をする」仕事なので、GPUの得意分野のど真ん中なのです。</p>
+    </div>
+    <p>この「同じ計算を大量に同時実行」というGPUの性格は、この先の章でも繰り返し登場します。GPUが何が得意で何が苦手か、ここで感覚をつかんでおいてください。</p>
+
+    <h2>4. 影はどう決まる？ ― シャドウマップ</h2>
+    <p>照明計算にはもう1つ、大事な判断があります。「そもそもこのマスに、光は<strong>届いているのか？</strong>」。間に遮蔽物があれば、そこは影になるはずです。</p>
+    <p>GPUの答えはエレガントです。<strong>「光源の位置にカメラを置いて、世界を1回撮影しておく」</strong>。ただし撮るのは色ではなく<strong>深度</strong>（光源から各物体までの距離）だけ。この「光源から見た深度画像」を<strong>シャドウマップ</strong>と呼びます。</p>
+    <p>あるマスが影かどうかの判定はこうなります:</p>
+    <ol>
+      <li>「このマスの場所は、光源から<strong>10m</strong>の距離にある」（位置から計算）</li>
+      <li>「シャドウマップを見ると、光源からこの方向に<strong>6m</strong>の時点で何かに当たっている」</li>
+      <li>「つまり、私より4m手前に遮蔽物がある。<strong>光は私に届いていない。影だ</strong>」</li>
+    </ol>
+    <div class="keypoint">
+      <p>影は物体に貼り付いているのではなく、<strong>「光源から見えるか見えないか」を毎フレーム判定し直した結果</strong>です。だから光源が動けば影も正しく動くし、キャラクターが動けば影も追いかけてくるのです。</p>
+    </div>
+
+    <h2>5. ライトが増えるとどうなる？</h2>
+    <p>街灯が10本あるシーンでは、各マスについて「街灯1からは明るい？　街灯2からは？…」と判断が10回に増えます。ライトの数だけ計算は素直に増える。</p>
+    <p>ただし、ここで前ページの伏線が回収されます。ディファード方式では、この計算をするのは<strong>「最終的に見えているマス」だけ</strong>。隠れた面のぶんまでライト10本分の計算をする無駄がない。ライトが多い現代のゲームでディファード方式が選ばれる理由が、これです。</p>
+
+    <h2>6. 触って確かめる</h2>
+    <p>下のデモでは<strong>太陽の向きをスライダーで動かせます</strong>。「ライティングのみ」タブ（材質を無視して光だけを見るビュー）にすると、面の向きと明るさの関係が最もよく分かります。「シャドウマップの中身」タブでは、光源から見た深度画像という珍しい光景も見られます。</p>
+  </section>
+
+  <div class="demo-title"><span class="badge">DEMO</span><h3>ライティング実験室（太陽を動かす＋シャドウマップの中身）</h3></div>
+  <div class="panel" id="sec3-app">
+    <div class="panel-canvas" id="sec3-canvas"></div>
+    <div class="panel-controls tabs" id="sec3-controls"></div>
+  </div>
+  <div id="demo-checklist"></div>
+
+  <section class="prose">
+    <div class="misconception">
+      <p><strong>「影は物体にくっついている」</strong>――くっついていません。影は毎フレーム、光源と遮蔽物の位置関係から計算し直されています。「昼のシーンの影をベイク（焼き付け）する」という手法もありますが、あれは「毎フレーム計算する代わりに、事前計算した結果を貼っておく」という最適化。動かない物にしか使えない理由も、これで分かりますね。</p>
+    </div>
+
+    <h2>7. このページのまとめ</h2>
+    <ul>
+      <li>照明計算＝<strong>素材袋（G-Buffer）と光源情報を突き合わせる判断の連続</strong>。数式の前に日本語で読める</li>
+      <li>法線が光源を向いているほど明るい。地の色と混ぜて最終色</li>
+      <li>GPUは<strong>数千人のアルバイト</strong>。全マス同時のライティングはGPUの得意分野ど真ん中</li>
+      <li>影＝<strong>光源から見た深度画像（シャドウマップ）</strong>との照合結果。毎フレーム計算し直される</li>
+    </ul>
+  </section>
+
+  <section class="quiz" id="quiz"></section>
+
+  <section class="terms-box">
+    <h2>このページで出てきた用語</h2>
+    <dl>
+      <dt>ライティングパス</dt><dd>G-Bufferの素材に光を当て、各マスの最終色を決める工程。<a href="../glossary.html#lighting">用語集</a></dd>
+      <dt>シャドウマップ</dt><dd>光源の位置から撮影した深度画像。影の判定に使う。<a href="../glossary.html#shadowmap">用語集</a></dd>
+      <dt>ハイライト</dt><dd>ツルツルした面に映る光源のテカリ。ラフネスが低いほど強い。<a href="../glossary.html#highlight">用語集</a></dd>
+    </dl>
+  </section>
+
+  <p class="next-preview">▶ 次のページは第3章の仕上げ。ガラスや煙など「後ろが透ける物」の特別扱いと、完成した絵への最後の化粧（ポストプロセス）です。</p>
+</article>
+
+<script type="module">
+  import { renderChrome, renderQuiz, tourButton, renderChecklist } from "../js/site.js";
+  import { initSection3 } from "../js/section3-passes.js";
+
+  renderChrome();
+  initSection3({ tabs: ["final", "lighting", "normal", "shadowmap"], sunControl: true });
+
+  renderChecklist("#demo-checklist", [
+    "太陽の向きスライダーを動かすと、明るい面と暗い面が入れ替わるのを見た",
+    "「ライティングのみ」タブで、面の向きと明るさの関係を見た",
+    "「法線」タブと見比べて、法線が光源を向いている面ほど明るいことを確かめた",
+    "「シャドウマップの中身」で、光源から見た深度画像を見た",
+  ]);
+
+  tourButton("#sec3-controls", [
+    { sel: "#sec3-tab-lighting", text: "まず「ライティングのみ」タブに切り替えます。材質を無視して、光の当たり方だけを見るビューです。", click: "#sec3-tab-lighting" },
+    { sel: "#sec3-sun-az", text: "太陽の方位を回します。明るい面と暗い面が入れ替わるのを見てください。「法線が光源を向いている面ほど明るい」が照明計算の骨格です。", set: { sel: "#sec3-sun-az", value: 220 } },
+    { sel: "#sec3-tab-shadowmap", text: "最後に「シャドウマップの中身」。これが光源の位置から撮った深度画像です。この画像と各マスの距離を照合して「影かどうか」が決まります。", click: "#sec3-tab-shadowmap" },
+    { sel: "#sec3-tab-final", text: "最終画面に戻します。いま見た「光の判断」と「影の判定」が全マスで同時に走った結果が、この1枚です。", click: "#sec3-tab-final" },
+  ]);
+
+  renderQuiz("#quiz", [
+    {
+      q: "あるマスの明るさを決める一番の要素は？",
+      choices: ["マスの画面上の位置", "法線（表面の向き）と光源の向きの関係", "頂点の数", "テクスチャの解像度"],
+      a: 1,
+      exp: "法線が光源の方を向いているほど明るく、逆を向くほど暗い。これが照明計算の骨格です。",
+    },
+    {
+      q: "シャドウマップとは何を撮影したもの？",
+      choices: ["影の形の白黒写真", "光源の位置から見た深度（距離）の画像", "カメラから見た法線の画像", "完成画面のコピー"],
+      a: 1,
+      exp: "光源にカメラを置いて深度だけを記録した画像。各マスの距離と照合し「光が届いているか」を判定します。",
+    },
+    {
+      q: "照明計算がGPU向きの仕事である理由は？",
+      choices: ["計算が1回で終わるから", "全マスに対して同じ形の判断を同時に実行できるから", "CPUには色が扱えないから", "計算に乱数が必要だから"],
+      a: 1,
+      exp: "GPU＝数千人の単純作業アルバイト。「同じ判断を200万マスで一斉に」はまさに得意分野のど真ん中です。",
+    },
+  ]);
+</script>
+</body>
+</html>

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>第2章d: ラスタライズ | 3DCG描画のしくみ</title>
+<link rel="stylesheet" href="../css/style.css" />
+<script type="importmap">
+{ "imports": { "three": "../js/vendor/three/build/three.module.min.js", "three/addons/": "../js/vendor/three/examples/jsm/" } }
+</script>
+</head>
+<body>
+
+<article class="lesson">
+  <header class="lesson-head">
+    <p class="lesson-no">第2章d（13ページ中の6ページ目・約10分）</p>
+    <h1>ラスタライズ ― 三角形が「マス目」になる瞬間</h1>
+    <p class="lesson-sub">頂点の旅、終着駅。3Dの三角形が、ディスプレイの物理的なドットの上に落とし込まれます。</p>
+  </header>
+
+  <section class="recap">
+    <h2>⏪ 前のページの30秒復習</h2>
+    <ul>
+      <li>視錐台＝映る範囲の箱。FOV/Near/Farで形が決まる</li>
+      <li>投影＝箱を直方体に押し潰す。奥ほど縮む→遠近感の誕生</li>
+      <li>箱の外の頂点は描画前に切り捨て（クリップ）。早めに捨てる思想＝カリング</li>
+    </ul>
+    <p class="recap-link"><a href="ch2c-projection.html">→ 不安なら第2章cを読み直す</a></p>
+  </section>
+
+  <section class="goals">
+    <h2>🎯 このページで分かること</h2>
+    <ul>
+      <li>ディスプレイは「マス目（ピクセル）」でしか光れない、という物理的事実を再確認する</li>
+      <li>ラスタライズ＝「三角形の内側にあるマス目を洗い出す作業」だと分かる</li>
+      <li>頂点の旅の全行程（5つの駅）を1枚の路線図で言えるようになる</li>
+    </ul>
+  </section>
+
+  <section class="prose">
+
+    <h2>1. 問題提起: ディスプレイは「線」を引けない</h2>
+    <p>ここまでの旅で、三角形は「画面のどのあたりに、どんな形で映るべきか」まで決まりました。でも最後に、決定的な問題が残っています。</p>
+    <p><strong>ディスプレイは、滑らかな線や面を表示できません。</strong>ディスプレイにあるのは、びっしり並んだ小さな光る点――<strong>ピクセル（画素）</strong>――だけです。スマホの画面をルーペで拡大すると、赤緑青の小さな粒がマス目状に並んでいるのが見えます。どんなに滑らかに見える曲線も、実際は<em>マス目の階段</em>なのです。</p>
+    <p>つまり最後の仕事はこうなります: <strong>「この三角形を表示するには、どのマス目を光らせればいいのか？」を決めること。</strong>この作業が<strong>ラスタライズ</strong>です。</p>
+
+    <h2>2. スクリーン空間 ― 解像度のマス目座標</h2>
+    <p>クリップ空間まで来た座標を、実際のディスプレイの解像度に対応付けます。フルHDなら横1920マス×縦1080マス。3Dの座標がついに<strong>「横から何マス目・縦から何マス目」という2Dの整数</strong>に落ちます。この最終的な座標系が<strong>スクリーン空間</strong>です。</p>
+    <p>Zの奥行き情報はどうなるかというと、捨てられません。「このマスに映っている物はカメラからどれくらい遠いか」という<strong>深度</strong>情報として、別枠で保管されます。これが次の章（G-Buffer）で大活躍します。</p>
+
+    <h2>3. ラスタライズの手順を、ゆっくり分解する</h2>
+    <p>ラスタライズの中身は、拍子抜けするほど地道な作業です。</p>
+    <ol>
+      <li>三角形の3つの頂点を、スクリーン空間のマス目の上に置く</li>
+      <li>マス目を<strong>上の行から順に</strong>スキャンしていく</li>
+      <li>各マスについて、<strong>マスの中心が三角形の内側にあるか？</strong>を判定する</li>
+      <li>内側なら「このマスは塗る候補」リストに追加する</li>
+    </ol>
+    <p>これを全行について繰り返すと、「この三角形のために光らせるべきマス目の一覧」が完成します。下のデモの「スロー再生」は、この手順をそのまま1行ずつ見せるものです。</p>
+
+    <div class="analogy">
+      <p>方眼紙に下絵の三角形を重ねて、「線の内側に中心があるマスだけ」を塗り絵のように塗っていく作業を想像してください。小学校の図工でやったモザイク画とまったく同じです。GPUはこれを1秒間に何十億マス分も実行できる、恐ろしく速い塗り絵職人です。</p>
+    </div>
+
+    <h3>境界線ぎりぎりのマスはどうする？</h3>
+    <p>三角形の輪郭線がマスのど真ん中を通ったら？　ルールは単純で「<strong>マスの中心点が内側なら塗る、外側なら塗らない</strong>」。これだけです。この白黒はっきりした判定のせいで輪郭はギザギザ（ジャギー）になりますが、それを滑らかに見せる化粧術（アンチエイリアシング）は、ずっと後の工程の話。今は「中心点で判定」だけ覚えれば十分です。</p>
+
+    <h2>4. 触って確かめる</h2>
+    <p>デモで確認してほしいことは2つです。まず<strong>スロー再生</strong>で、上の行から順に塗られていく様子を見る。次に<strong>解像度を切り替えて</strong>、マス目が細かいほど輪郭が滑らかになる代わりに、塗るマスの数（＝仕事量）が跳ね上がるのを数字で見る。頂点（黄色い丸）をドラッグして三角形の形を変えることもできます。</p>
+  </section>
+
+  <div class="demo-title"><span class="badge">DEMO</span><h3>ラスタライズ・スロー再生（解像度切り替え＋頂点ドラッグ）</h3></div>
+  <div class="panel" id="sec2d-app">
+    <div class="panel-controls" id="sec2d-controls"></div>
+    <div class="panel-canvas" id="sec2d-canvas"></div>
+  </div>
+  <div id="demo-checklist"></div>
+
+  <section class="prose">
+    <h2>5. 頂点の旅・全行程のふりかえり</h2>
+    <p>これで頂点の旅は終着駅に到着しました。5つの駅を、路線図として1枚にまとめます。<strong>この図はこの先の章でも何度も戻ってくる、このサイトの背骨です。</strong></p>
+
+    <div class="railmap">
+      <div class="station">ローカル空間<small>モデル専用のものさし</small></div>
+      <span class="rail">→</span>
+      <div class="station">ワールド空間<small>世界に配置</small></div>
+      <span class="rail">→</span>
+      <div class="station">ビュー空間<small>カメラが原点に</small></div>
+      <span class="rail">→</span>
+      <div class="station">クリップ空間<small>映る範囲に切り抜き</small></div>
+      <span class="rail">→</span>
+      <div class="station">スクリーン空間<small>マス目に落とす</small></div>
+    </div>
+
+    <ul>
+      <li><strong>ローカル→ワールド</strong>: モデル専用の住所を、世界共通の住所へ（ワールド行列）</li>
+      <li><strong>ワールド→ビュー</strong>: 世界を引き寄せて、カメラから見た住所へ（ビュー行列）</li>
+      <li><strong>ビュー→クリップ</strong>: 映る範囲の箱をかぶせ、押し潰して遠近感を作る（プロジェクション行列）</li>
+      <li><strong>クリップ→スクリーン</strong>: 生き残った三角形を、解像度のマス目に落とす（ラスタライズ）</li>
+    </ul>
+
+    <div class="misconception">
+      <p><strong>「ラスタライズで色が塗られる」</strong>――まだ塗られていません。ラスタライズが確定させるのは「<em>どの</em>マスを塗るべきか」のリストまで。「<em>何色に</em>塗るか」はまだ白紙です。色を決める工程は次の第3章。この区別があいまいだと第4章の「クアッドの罠」が理解できなくなるので、ここではっきり線を引いておいてください。</p>
+    </div>
+
+    <h2>6. このページのまとめ</h2>
+    <ul>
+      <li>ディスプレイは<strong>ピクセルのマス目</strong>でしか光れない</li>
+      <li><strong>ラスタライズ</strong>＝三角形の内側にあるマス目を、上の行から順に洗い出す作業</li>
+      <li>判定ルールは「<strong>マスの中心が内側なら塗る候補</strong>」</li>
+      <li>解像度が上がるほど滑らかだが、<strong>塗る候補のマス数＝仕事量も増える</strong></li>
+      <li>頂点の旅は<strong>ローカル→ワールド→ビュー→クリップ→スクリーン</strong>の5駅</li>
+    </ul>
+  </section>
+
+  <section class="quiz" id="quiz"></section>
+
+  <section class="terms-box">
+    <h2>このページで出てきた用語</h2>
+    <dl>
+      <dt>ピクセル（画素）</dt><dd>ディスプレイの最小の光る点。画面はこのマス目の集まり。<a href="../glossary.html#pixel">用語集</a></dd>
+      <dt>ラスタライズ</dt><dd>三角形の内側にあるピクセルを洗い出す工程。<a href="../glossary.html#rasterize">用語集</a></dd>
+      <dt>スクリーン空間</dt><dd>解像度のマス目に対応した最終的な2D座標系。<a href="../glossary.html#screen">用語集</a></dd>
+      <dt>深度（Depth）</dt><dd>そのマスに映る物のカメラからの距離。別枠で保管される。<a href="../glossary.html#depth">用語集</a></dd>
+    </dl>
+  </section>
+
+  <p class="next-preview">▶ 次のページから第3章。「どのマスを塗るか」が決まった画面に、いよいよ色を付けていきます。ただし現代のゲームは、いきなり色を塗りません。まず「素材」を作ります。</p>
+</article>
+
+<script type="module">
+  import { renderChrome, renderQuiz, tourButton, renderChecklist } from "../js/site.js";
+  import { initSection2d } from "../js/section2-spaces.js";
+
+  renderChrome();
+  initSection2d();
+
+  renderChecklist("#demo-checklist", [
+    "スロー再生で、上の行から順にマスが塗られていくのを見た",
+    "解像度を64×36にすると輪郭が滑らかになり、塗るマス数が増えるのを見た",
+    "頂点をドラッグして三角形を変形させ、塗られるマスが追従するのを見た",
+  ]);
+
+  tourButton("#sec2d-controls", [
+    { sel: "#sec2d-play", text: "まずスロー再生を見てください。上の行から1行ずつスキャンして、三角形の内側のマスだけを塗っていきます。", click: "#sec2d-play" },
+    { sel: "#sec2d-res64", text: "再生が終わったら解像度を64×36に上げてみましょう。輪郭が滑らかになる代わりに、塗るマスの数（＝仕事量）が数倍になります。", click: "#sec2d-res64" },
+    { sel: "#sec2d-canvas", text: "黄色い頂点はドラッグで動かせます。三角形を大きくすると塗るマスが一気に増えることも確かめてください。" },
+  ]);
+
+  renderQuiz("#quiz", [
+    {
+      q: "ラスタライズが確定させるものは？",
+      choices: ["各マスの最終的な色", "どのマスを塗るべきかのリスト", "モデルの頂点数", "カメラの位置"],
+      a: 1,
+      exp: "ラスタライズは「どのマスを塗るか」の洗い出しまで。「何色に塗るか」は次の第3章の仕事です。",
+    },
+    {
+      q: "マスを塗るかどうかの判定ルールは？",
+      choices: ["マスの四隅がすべて内側なら塗る", "マスの中心が三角形の内側なら塗る", "マスに三角形が1ピクセルでも触れたら塗る", "ランダムに決める"],
+      a: 1,
+      exp: "マスの中心点が内側かどうか、の白黒はっきりした判定です。このため輪郭はギザギザ（ジャギー）になります。",
+    },
+    {
+      q: "頂点の旅の5つの駅を正しい順に並べたものは？",
+      choices: [
+        "ワールド→ローカル→ビュー→クリップ→スクリーン",
+        "ローカル→ワールド→ビュー→クリップ→スクリーン",
+        "ローカル→ビュー→ワールド→スクリーン→クリップ",
+        "スクリーン→クリップ→ビュー→ワールド→ローカル",
+      ],
+      a: 1,
+      exp: "モデル専用→世界共通→カメラ基準→映る範囲に切り抜き→マス目へ。この路線図はこの先の章でも何度も使います。",
+    },
+  ]);
+</script>
+</body>
+</html>

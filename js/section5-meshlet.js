@@ -87,7 +87,24 @@ export function initSection5() {
     el("span", {}, [el("i", { style: "background:#5fb4ff" }), "Meshlet: 見えるパックだけ処理"]),
   ]);
 
+  // 監督（タスクシェーダー）の判断ログ
+  const logPanel = el("div", {
+    style: "font-size:0.68rem;font-family:monospace;color:var(--muted);height:72px;overflow:hidden;" +
+      "display:flex;flex-direction:column-reverse;min-width:280px;",
+  });
+  const logLines = [];
+  let logCooldown = 0;
+  function pushLog(msg) {
+    if (logCooldown > 0) return; // 間引き
+    logCooldown = 6;
+    logLines.unshift(msg);
+    if (logLines.length > 4) logLines.pop();
+    logPanel.innerHTML = logLines.map((l, i) => `<div style="opacity:${1 - i * 0.22}">${l}</div>`).join("");
+  }
+  const prevVisible = new Map();
+
   function frameUpdate() {
+    if (logCooldown > 0) logCooldown--;
     if (mode !== "meshlet") {
       loadMeter.setValue(100);
       visibleLabel.textContent = `頂点処理: 全 ${triCountTotal} 三角形 (カリングなし)`;
@@ -106,6 +123,13 @@ export function initSection5() {
 
       const visible = (!cullBackface || facing) && (!cullDistance || bigEnough);
       m.mesh.visible = visible;
+      const idx = meshlets.indexOf(m);
+      const was = prevVisible.get(idx);
+      if (was !== undefined && was !== visible) {
+        if (!visible) pushLog(`パック#${String(idx).padStart(2, "0")}: ${!facing ? "裏向きのため破棄" : "遠すぎる(1px未満)ため破棄"} → 頂点計算スキップ`);
+        else pushLog(`パック#${String(idx).padStart(2, "0")}: 見えるようになったので処理再開`);
+      }
+      prevVisible.set(idx, visible);
       if (visible) { visibleCount++; visibleTris += m.triCount; }
     }
     const pct = (visibleTris / triCountTotal) * 100;
@@ -115,7 +139,7 @@ export function initSection5() {
 
   const modeButtons = {};
   function tab(label, key) {
-    const b = el("button", { class: "tab", onclick: () => { setMode(key); Object.values(modeButtons).forEach(x=>x.classList.remove("active")); modeButtons[key].classList.add("active"); } }, label);
+    const b = el("button", { class: "tab", id: `sec5-tab-${key}`, onclick: () => { setMode(key); Object.values(modeButtons).forEach(x=>x.classList.remove("active")); modeButtons[key].classList.add("active"); } }, label);
     modeButtons[key] = b;
     return b;
   }
@@ -123,8 +147,11 @@ export function initSection5() {
   modeButtons.legacy.classList.add("active");
 
   controlsHost.appendChild(tabsRow);
-  controlsHost.appendChild(slider({ label: "カメラ距離", min: 2, max: 14, step: 0.1, value: radius, onInput: (v) => (radius = v) }));
+  const distS = slider({ label: "カメラ距離", min: 2, max: 14, step: 0.1, value: radius, onInput: (v) => (radius = v) });
+  distS.querySelector("input").id = "sec5-distance";
+  controlsHost.appendChild(distS);
   controlsHost.appendChild(el("div", { class: "vgroup" }, [el("div", { class: "vgroup-title" }, "GPU負荷（頂点処理）"), loadMeter, visibleLabel]));
+  controlsHost.appendChild(el("div", { class: "vgroup" }, [el("div", { class: "vgroup-title" }, "🎩 監督（タスクシェーダー）の判断ログ"), logPanel]));
   controlsHost.appendChild(legend);
   controlsHost.appendChild(el("p", { style: "font-size:0.72rem;color:var(--muted);margin:0;" }, "ドラッグして回転させると、裏側に回ったカラーパックが消滅するのを確認できます。"));
 

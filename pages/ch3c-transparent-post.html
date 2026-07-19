@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>第3章c: 半透明とポストプロセス | 3DCG描画のしくみ</title>
+<link rel="stylesheet" href="../css/style.css" />
+<script type="importmap">
+{ "imports": { "three": "../js/vendor/three/build/three.module.min.js", "three/addons/": "../js/vendor/three/examples/jsm/" } }
+</script>
+</head>
+<body>
+
+<article class="lesson">
+  <header class="lesson-head">
+    <p class="lesson-no">第3章c（13ページ中の9ページ目・約10分）</p>
+    <h1>半透明とポストプロセス ― 1枚の絵を「描き切る」</h1>
+    <p class="lesson-sub">ガラスや煙はなぜ特別扱いされるのか。そして完成した写真への最後の化粧。1フレームの全工程がここで完結します。</p>
+  </header>
+
+  <section class="recap">
+    <h2>⏪ 前のページの30秒復習</h2>
+    <ul>
+      <li>照明計算＝素材袋と光源情報を突き合わせる判断。全マスで一斉実行</li>
+      <li>影はシャドウマップ（光源から見た深度画像）との照合で毎フレーム決まる</li>
+      <li>ディファード方式は「見えているマスだけ」に光計算を絞れる</li>
+    </ul>
+    <p class="recap-link"><a href="ch3b-lighting.html">→ 不安なら第3章bを読み直す</a></p>
+  </section>
+
+  <section class="goals">
+    <h2>🎯 このページで分かること</h2>
+    <ul>
+      <li>ガラス・煙・炎がG-Buffer方式に乗れない構造的な理由が分かる</li>
+      <li>アルファブレンド＝「色の混ぜ算」の感覚がつかめる</li>
+      <li>ポストプロセス＝完成した2D画像への加工だと分かる（もう3Dの話ではない！）</li>
+    </ul>
+  </section>
+
+  <section class="prose">
+
+    <h2>1. 半透明はなぜ後回しにされるのか</h2>
+    <p>ライティングまで終わって、不透明な物体の絵は完成しました。ところが、まだ描いていないものがあります。ガラス、水面、煙、炎、魔法のエフェクト――<strong>「後ろの景色が透けて見える物」たち</strong>です。</p>
+    <p>なぜ後回しなのか。思い出してください。G-Bufferは<strong>1つのマスに1つの素材袋</strong>しか持てませんでした。深度も法線も材質も、マスごとに1セットだけ。</p>
+    <p>ではガラス越しに木が見えているマスはどうでしょう？　そのマスには「ガラスの表面」と「奥の木」、<strong>2つの物体の情報が同時に必要</strong>です。袋は1つしかないのに、入れたい素材は2つ。ここでG-Buffer方式は構造的に破綻します。</p>
+    <div class="keypoint">
+      <p>だから半透明の物体は、G-Bufferに参加せず、<strong>ライティングまで完全に終わった「完成済みの絵」の上に、あとから直接重ね描き</strong>されます。方式としては昔ながらのフォワードレンダリング。つまり現代のゲーム画面は「ディファードで描いた不透明の世界」の上に「フォワードで描いた半透明の世界」を重ねた、<em>2つの方式の合わせ技</em>なのです。</p>
+    </div>
+
+    <h2>2. アルファブレンド ― 色の混ぜ算</h2>
+    <p>「重ね描き」の中身は、単純な色の混合です。たとえば薄い青のガラス（不透明度30%）越しに、緑の木が見えているマスなら:</p>
+    <p style="text-align:center;"><strong>最終色 ＝ 奥の色（緑）× 70% ＋ ガラスの色（青）× 30%</strong></p>
+    <p>この混合を<strong>アルファブレンド</strong>と呼びます。「アルファ」は不透明度を表す数値の名前です。エフェクトやUIで「アルファ値」という言葉を見たことがあれば、それはこの混合比のことです。</p>
+
+    <div class="analogy">
+      <p>色付きの透明フィルム（OHPシート）を重ねる遊びを想像してください。青いフィルムを緑の紙に重ねると、混ざった色に見える。フィルムが濃い（アルファが高い）ほど、下の色は見えなくなる。アルファブレンドはこのフィルム重ねの計算版です。</p>
+    </div>
+
+    <h3>順番が命</h3>
+    <p>フィルム重ねには重要な制約があります。<strong>重ねる順番で結果が変わる</strong>のです。ガラスの奥に煙、さらに奥に炎があるなら、必ず「炎→煙→ガラス」と<strong>奥から手前の順</strong>に重ねないと正しい見た目になりません。だからGPUは半透明の物体を毎フレーム距離順に並べ替えてから描きます。半透明が「多いと重い」と言われる理由の1つが、この並べ替えです。</p>
+
+    <h2>3. ポストプロセス ― 完成写真への加工</h2>
+    <p>不透明を描き、光を当て、半透明を重ねた。これで3D空間の描画はすべて終わりです。ここから先の工程は、実は<strong>もう3Dの話ではありません</strong>。</p>
+    <p>手元にあるのは、完成した<strong>1枚の2D画像</strong>。この画像に対して、カメラのレンズ効果や映画的な色調整を加える最終工程が<strong>ポストプロセス</strong>（後処理）です。</p>
+    <div class="analogy">
+      <p>スマホで写真を撮ったあと、編集アプリでフィルタをかける作業と本質は同じです。撮影（3D描画）はもう終わっていて、あとは<strong>写真加工</strong>。ゲームのフォトモードで触る項目の多くが、まさにこの層です。</p>
+    </div>
+    <p>代表的なポストプロセスを、写真アプリの言葉で並べてみます:</p>
+    <ul>
+      <li><strong>ブルーム</strong> ― 強い光が周囲ににじんで溢れる効果。「発光感フィルタ」</li>
+      <li><strong>被写界深度（DOF）</strong> ― ピントの合っていない場所をボカす。「ポートレートモード」</li>
+      <li><strong>モーションブラー</strong> ― カメラが速く動いたときのブレ。「流し撮り効果」</li>
+      <li><strong>カラーグレーディング</strong> ― 画面全体の色調を映画のように統一。「フィルタ一括適用」</li>
+      <li><strong>ビネット</strong> ― 画面の四隅を暗くして視線を中央に集める効果</li>
+    </ul>
+
+    <h2>4. 1フレームの全工程を、通しで見る</h2>
+    <p>これで、1フレーム（1/60秒）の中で起きていることの全体像がそろいました。</p>
+    <div class="railmap">
+      <div class="station">① 不透明を描く<small>G-Bufferに素材保存</small></div>
+      <span class="rail">→</span>
+      <div class="station">② 光を当てる<small>ライティングパス</small></div>
+      <span class="rail">→</span>
+      <div class="station">③ 半透明を重ねる<small>アルファブレンド</small></div>
+      <span class="rail">→</span>
+      <div class="station">④ 写真加工<small>ポストプロセス</small></div>
+    </div>
+    <p>この4コマが、あなたがゲームをしている間、<strong>1秒に60回</strong>ずっと繰り返されています。下のデモの「工程スライダー」を0から3へ動かして、絵が段階的に完成していく様子を確かめてください。</p>
+
+    <h2>5. 触って確かめる</h2>
+  </section>
+
+  <div class="demo-title"><span class="badge">DEMO</span><h3>工程ビフォーアフター（スライダーで1フレームを再生）</h3></div>
+  <div class="panel" id="sec3-app">
+    <div class="panel-canvas" id="sec3-canvas"></div>
+    <div class="panel-controls" id="sec3-controls"></div>
+  </div>
+  <div id="demo-checklist"></div>
+
+  <section class="prose">
+    <div class="misconception">
+      <p><strong>「ポストプロセスは仕上げの飾りだから軽い」</strong>――軽くありません。ポストプロセスは画面の<strong>全ピクセルに対する処理</strong>なので、コストは解像度に比例します。4K画面ならフルHDの4倍のマスに処理をかけることになる。「エフェクトを盛ったら重くなった」の犯人が、実はポストプロセスだった、というのは現場でよくある話です。</p>
+    </div>
+
+    <h2>6. このページのまとめ</h2>
+    <ul>
+      <li>半透明は「1マス1袋」のG-Bufferに乗れないため、<strong>完成済みの絵の上に奥から順に重ね描き</strong>される</li>
+      <li>重ね描きの計算が<strong>アルファブレンド</strong>＝色の混ぜ算。順番が命</li>
+      <li><strong>ポストプロセス</strong>は完成した2D画像への写真加工。もう3Dの話ではない</li>
+      <li>1フレーム＝<strong>不透明→ライティング→半透明→ポストプロセス</strong>の4コマ。毎秒60回繰り返し</li>
+    </ul>
+  </section>
+
+  <section class="quiz" id="quiz"></section>
+
+  <section class="terms-box">
+    <h2>このページで出てきた用語</h2>
+    <dl>
+      <dt>アルファブレンド</dt><dd>奥の色と手前の半透明の色を、不透明度の比率で混ぜる計算。<a href="../glossary.html#alphablend">用語集</a></dd>
+      <dt>ポストプロセス</dt><dd>完成した2D画像への後処理。ブルーム、DOF、カラーグレーディング等。<a href="../glossary.html#postprocess">用語集</a></dd>
+      <dt>ブルーム</dt><dd>強い光が周囲ににじむポストプロセス効果。<a href="../glossary.html#bloom">用語集</a></dd>
+    </dl>
+  </section>
+
+  <p class="next-preview">▶ 描画の全工程が分かったところで、次の第4章からは「なぜ重くなるのか」の話。現代GPU最大の落とし穴、「クアッドの罠」に踏み込みます。ここからがこのサイトの本番です。</p>
+</article>
+
+<script type="module">
+  import { renderChrome, renderQuiz, tourButton, renderChecklist } from "../js/site.js";
+  import { initSection3 } from "../js/section3-passes.js";
+
+  renderChrome();
+  initSection3({ stageSlider: true });
+
+  renderChecklist("#demo-checklist", [
+    "工程0（素材のみ）では、光も影もないのっぺりした絵だった",
+    "工程1でライティングが入り、立体感が生まれた",
+    "工程2でガラス球が「完成済みの絵の上に」重なった",
+    "工程3のポストプロセスで、画面全体の色味と雰囲気が変わった",
+  ]);
+
+  tourButton("#sec3-controls", [
+    { sel: "#sec3-stage", text: "工程スライダーを0に戻します。これがG-Bufferの素材だけ＝下ごしらえ直後の状態です。", set: { sel: "#sec3-stage", value: 0 } },
+    { sel: "#sec3-stage", text: "工程1: ライティングパスで光と影が付きました。", set: { sel: "#sec3-stage", value: 1 } },
+    { sel: "#sec3-stage", text: "工程2: 半透明のガラス球がアルファブレンドで重なりました。奥の景色が透けているのを確認してください。", set: { sel: "#sec3-stage", value: 2 } },
+    { sel: "#sec3-stage", text: "工程3: ポストプロセス。彩度・コントラスト・ビネットがかかり「写真の仕上げ」が入りました。この4コマが毎秒60回繰り返されています。", set: { sel: "#sec3-stage", value: 3 } },
+  ]);
+
+  renderQuiz("#quiz", [
+    {
+      q: "ガラスや煙がG-Buffer方式に参加できない理由は？",
+      choices: ["色が薄すぎて保存できないから", "1つのマスに2つ以上の物体の素材が必要になり、袋が足りないから", "GPUがガラスを認識できないから", "半透明は昔の技術だから"],
+      a: 1,
+      exp: "G-Bufferは1マス1袋。ガラス越しの景色は「ガラス」と「奥の物」の2つの情報が要るため、構造的に乗せられません。",
+    },
+    {
+      q: "半透明の物体を描く順番のルールは？",
+      choices: ["手前から奥へ", "奥から手前へ", "大きい順", "順番は関係ない"],
+      a: 1,
+      exp: "色フィルムの重ね順と同じで、奥から手前に重ねないと混色結果が狂います。毎フレームの距離順ソートが必要です。",
+    },
+    {
+      q: "ポストプロセスが処理する対象は？",
+      choices: ["3D空間の頂点", "完成した1枚の2D画像の全ピクセル", "G-Bufferの法線だけ", "モデルファイル"],
+      a: 1,
+      exp: "もう3Dの話ではなく写真加工。全ピクセル処理なのでコストは解像度に比例します。",
+    },
+  ]);
+</script>
+</body>
+</html>

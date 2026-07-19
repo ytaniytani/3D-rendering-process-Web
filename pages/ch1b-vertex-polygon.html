@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>第1章b: 頂点とポリゴン | 3DCG描画のしくみ</title>
+<link rel="stylesheet" href="../css/style.css" />
+<script type="importmap">
+{ "imports": { "three": "../js/vendor/three/build/three.module.min.js", "three/addons/": "../js/vendor/three/examples/jsm/" } }
+</script>
+</head>
+<body>
+
+<article class="lesson">
+  <header class="lesson-head">
+    <p class="lesson-no">第1章b（13ページ中の2ページ目・約10分）</p>
+    <h1>頂点とポリゴン ― 点を3つ結ぶと「面」が生まれる</h1>
+    <p class="lesson-sub">3Dモデルの正体を、ついに完全に言い切れるようになるページです。</p>
+  </header>
+
+  <section class="recap">
+    <h2>⏪ 前のページの30秒復習</h2>
+    <ul>
+      <li>座標＝原点を基準にした「場所の住所」。(X, Y, Z) の数字3つの組</li>
+      <li>Zは奥行きの軸。このサイトでは「手前がプラス」で統一</li>
+      <li>点そのものには位置情報しかない。色も大きさもない</li>
+    </ul>
+    <p class="recap-link"><a href="ch1-coordinates.html">→ 不安なら第1章を読み直す</a></p>
+  </section>
+
+  <section class="goals">
+    <h2>🎯 このページで分かること</h2>
+    <ul>
+      <li>「頂点」＝座標を持つ点の正式な呼び名だと分かる</li>
+      <li>なぜ3点セット（三角形）が3DCGの基本単位なのかを説明できるようになる</li>
+      <li>3Dモデル＝「頂点のリスト」＋「結び方のリスト」の2つだけ、と言い切れるようになる</li>
+    </ul>
+  </section>
+
+  <section class="prose">
+
+    <h2>1. 点に正式な名前を付ける: 「頂点（ちょうてん）」</h2>
+    <p>前のページで動かした「座標を持つ点」には、3DCGの世界での正式な名前があります。<strong>頂点（ちょうてん）</strong>、英語では<strong>Vertex（バーテックス）</strong>です。</p>
+    <p>これから先、このサイトでは何度も何度も「頂点」という言葉が出てきます。GPUの負荷の話も、最新技術Naniteの話も、ぜんぶ「頂点をどう効率よく処理するか」の話だからです。意味は今まで通り、<em>座標(X, Y, Z)を持った点</em>。それだけです。身構える必要はありません。</p>
+
+    <h2>2. なぜ「3点」なのか ― 三角形が基本単位である理由</h2>
+    <p>頂点が1個だけあっても、それはただの点です。2個を結ぶと線になります。では3個結ぶと？ ここで初めて<strong>「面」</strong>――囲まれた領域――が生まれます。この三角形の面のことを<strong>ポリゴン</strong>と呼びます。</p>
+    <p>「4点や5点で面を作ってもいいのでは？」と思いますよね。実は、ここに3DCGの世界がわざわざ三角形を選んだ、とても重要な理由があります。</p>
+
+    <div class="analogy">
+      <p>厚紙で四角形を切り出して、対角線上の2つの角をつまんで、逆方向に軽くひねってみてください。紙は「ぐにゃり」とねじれて、もう平らではなくなります。<strong>4点は、同じ平面に乗っている保証がない</strong>のです。ところが三角形は、どの3点を選んでも必ず1枚のペラッとした平面に収まります。カメラの三脚が3本足なのも同じ理由で、3点は絶対にガタつかないのです。</p>
+    </div>
+
+    <p>GPUにとって「この面は絶対に平面である」という保証は、計算をシンプルで高速にするための生命線です。だから現代のGPUは、<strong>どんな形も最終的にぜんぶ三角形に分解してから処理します</strong>。モデリングソフトで四角形ポリゴン（クアッドポリゴン）を使って作業していても、GPUに渡る直前に自動的に三角形2枚に割られています。</p>
+
+    <h2>3. 「面を張る」とは、結び方のリストを作ること</h2>
+    <p>ここで、3Dモデルのデータの正体を完全に言い切ってしまいましょう。3Dモデルとは、次の<strong>2つのリストのセット</strong>です。</p>
+    <ol>
+      <li><strong>頂点リスト</strong> ― 「頂点0番は(0, 1, 0)、頂点1番は(1, 0, 0)、頂点2番は(−1, 0, 0)…」という住所録</li>
+      <li><strong>結び方リスト</strong> ― 「頂点0番・1番・2番で三角形を1枚張る。次に頂点1番・3番・2番で1枚…」という組み合わせ表</li>
+    </ol>
+    <p>これだけです。どんなに精巧なドラゴンのモデルも、映画品質の彫像も、データファイルの中身はこの2つのリスト（＋色などの付加情報）にすぎません。</p>
+    <div class="keypoint">
+      <p>3Dモデル＝<strong>頂点の住所録</strong>＋<strong>どの3点を結ぶかの組み合わせ表</strong>。美しい造形は「絵」として保存されているのではなく、この2つの数字のリストとして保存されています。</p>
+    </div>
+
+    <h2>4. 三角形を増やすと「形」ができていく</h2>
+    <p>三角形1枚では、ただの板です。でも2枚合わせれば四角い板になり、12枚あれば立方体（サイコロ型）が組めます。数百枚で岩、数千枚で顔、数百万枚で映画クオリティの彫像になります。</p>
+    <p><strong>粗いモデルと精細なモデルの違いは、三角形の枚数の違い</strong>です。下のデモで球の「分割数」スライダーを動かしてみてください。枚数が少ないとカクカクの多面体、増やすほど滑らかな球に近づいていきます。そして画面の枚数カウンターに注目してください。滑らかさは<em>タダではなく、枚数と引き換え</em>なのです。</p>
+    <p>この「枚数が増えるほど処理が重くなる」という現実こそが、このサイトの後半（第4章〜第6章）の主役になります。ここで枚数カウンターの感覚を体に入れておくと、後の話が一気につながります。</p>
+
+    <h2>5. 触って確かめる</h2>
+  </section>
+
+  <div class="demo-title"><span class="badge">DEMO 1</span><h3>三角形の組み立てキャンバス（頂点3つ→面を張る）</h3></div>
+  <div class="panel" id="sec1-app">
+    <div class="panel-controls" id="sec1-controls"></div>
+    <div class="panel-canvas" id="sec1-canvas"></div>
+  </div>
+  <div id="demo1-checklist"></div>
+
+  <div class="demo-title"><span class="badge">DEMO 2</span><h3>三角形の枚数と滑らかさ（立方体・球のワイヤーフレーム）</h3></div>
+  <div class="panel" id="demoB-app">
+    <div class="panel-controls" id="demoB-controls"></div>
+    <div class="panel-canvas" id="demoB-canvas"></div>
+  </div>
+  <div id="demo2-checklist"></div>
+
+  <section class="prose">
+    <div class="misconception">
+      <p><strong>「滑らかな曲面は、どこかに曲線や曲面のデータが保存されているはず」</strong>――保存されていません。ゲームに登場する球も、キャラクターの頬の丸みも、すべて小さな三角形の板の集まりです。十分に細かければ、人間の目には曲面に見えるだけ。上のデモ2で球にぐっと近づいてみてください。カクカクの多面体である正体が見えます。</p>
+    </div>
+
+    <h2>6. このページのまとめ</h2>
+    <ul>
+      <li>座標を持つ点の正式名称は<strong>頂点（Vertex）</strong></li>
+      <li>3点は必ず平面に乗るので、GPUは<strong>すべてを三角形に分解して</strong>処理する</li>
+      <li>3Dモデル＝<strong>頂点リスト＋結び方リスト</strong>の2つの数字リスト</li>
+      <li>滑らかさは三角形の枚数と引き換え。<strong>枚数が多いほど重い</strong>（後半の章の伏線）</li>
+    </ul>
+  </section>
+
+  <section class="quiz" id="quiz"></section>
+
+  <section class="terms-box">
+    <h2>このページで出てきた用語</h2>
+    <dl>
+      <dt>頂点（ちょうてん）／Vertex</dt><dd>座標(X, Y, Z)を持つ点。3Dモデルの最小の構成要素。<a href="../glossary.html#vertex">用語集</a></dd>
+      <dt>ポリゴン</dt><dd>頂点3つを結んで張られる三角形の面。3DCGの基本単位。<a href="../glossary.html#polygon">用語集</a></dd>
+      <dt>ワイヤーフレーム</dt><dd>面を塗らず、三角形の輪郭線だけを表示するモード。構造の確認に使う。<a href="../glossary.html#wireframe">用語集</a></dd>
+    </dl>
+  </section>
+
+  <p class="next-preview">▶ 次のページから第2章。「数字のリスト」にすぎないモデルが、どんな旅をして画面に映るのか――最初の駅「ローカル空間とワールド空間」から出発します。</p>
+</article>
+
+<script type="module">
+  import { renderChrome, renderQuiz, tourButton, renderChecklist } from "../js/site.js";
+  import { initSection1 } from "../js/section1-points.js";
+  import { initDemoBShapes } from "../js/demoB-shapes.js";
+
+  renderChrome();
+  initSection1();
+  initDemoBShapes();
+
+  renderChecklist("#demo1-checklist", [
+    "頂点の数値を変えると、3D空間の点が即座に動くのを見た",
+    "「三角形を作る」ボタンで、3点の間に面が張られるのを見た",
+    "ドラッグで裏側からも三角形を見た（面はペラペラの板だと分かった）",
+  ]);
+  renderChecklist("#demo2-checklist", [
+    "分割数を上げると球が滑らかになり、三角形の枚数が増えるのを見た",
+    "滑らかに見える球も、近づくとカクカクの多面体だと確認した",
+  ]);
+
+  tourButton("#sec1-controls", [
+    { sel: "#sec1-controls", text: "3つの頂点の座標が数字で並んでいます。これが「頂点リスト」の実物です。" },
+    { sel: "#sec1-make-triangle", text: "このボタンが「結び方リスト」に1行追加する操作にあたります。押してみましょう。", click: "#sec1-make-triangle" },
+    { sel: "#sec1-canvas", text: "面が張られました！ ドラッグして裏側からも見てください。3Dモデルはこの三角形が何千枚も集まったものです。" },
+  ]);
+
+  renderQuiz("#quiz", [
+    {
+      q: "GPUがすべての面を三角形に分解してから処理する理由は？",
+      choices: ["三角形が一番美しい形だから", "3点は必ず同一平面に乗り、計算が単純で速くなるから", "昔からの習慣で意味はない", "三角形が一番大きい面積を持つから"],
+      a: 1,
+      exp: "4点以上は紙をひねったように平面から外れる可能性がありますが、3点は絶対に平面。だからGPUは三角形だけを扱います。",
+    },
+    {
+      q: "3Dモデルのデータの本体は？",
+      choices: ["高解像度の画像の集まり", "曲面の数式の集まり", "頂点の住所録と、どの3点を結ぶかの組み合わせ表", "GPUにしか読めない特殊な絵"],
+      a: 2,
+      exp: "「頂点リスト」＋「結び方リスト」の2つの数字のリスト。これが3Dモデルの正体です。",
+    },
+    {
+      q: "モデルの滑らかさと三角形の枚数の関係は？",
+      choices: ["枚数が多いほど滑らかに見えるが、そのぶん処理は重くなる", "枚数と滑らかさは無関係", "枚数が少ないほど滑らか", "枚数はGPUが自動で無限に増やせるのでタダ"],
+      a: 0,
+      exp: "滑らかさは枚数と引き換え。この「枚数=負荷」の関係が、第4章以降の高速化技術の話の土台になります。",
+    },
+  ]);
+</script>
+</body>
+</html>
