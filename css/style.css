@@ -1,27 +1,17 @@
+/* ダークテーマ固定（PBR系ツールに合わせる） */
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
   --bg: #0f1115;
   --bg-soft: #171a21;
   --panel: #1b1f28;
   --text: #e8eaf0;
-  --muted: #9aa3b2;
+  --muted: #a8b1c0;
   --accent: #5fb4ff;
   --accent2: #ff9f5f;
   --ok: #5fe0a0;
   --warn: #ff5f5f;
   --border: #2a2f3a;
   --radius: 14px;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: #f6f7fb;
-    --bg-soft: #ffffff;
-    --panel: #ffffff;
-    --text: #1a1d24;
-    --muted: #5b6270;
-    --border: #dfe3ea;
-  }
 }
 
 * { box-sizing: border-box; }
@@ -110,27 +100,37 @@ main { max-width: 1100px; margin: 0 auto; padding: 1rem 1.5rem 4rem; }
 .section-body p { color: var(--muted); max-width: 780px; }
 .step-title { margin-top: 2rem; color: var(--text); font-size: 1.05rem; }
 
+/* デモパネル: コントロール(左) とビューポート(右) を横並びに */
 .panel {
   margin: 1.2rem 0;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   overflow: hidden;
+  display: flex;
+  align-items: stretch;
 }
 .panel-controls {
+  order: 0;
+  flex: 0 0 330px;
+  width: 330px;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.8rem 1.4rem;
-  padding: 1rem 1.2rem;
-  border-bottom: 1px solid var(--border);
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1rem 1.1rem;
+  border-right: 1px solid var(--border);
   background: var(--bg-soft);
-  align-items: center;
+  align-items: stretch;
+  overflow-y: auto;
+  max-height: 640px;
 }
-.panel-controls.tabs { border-bottom: none; border-top: 1px solid var(--border); }
+.panel-controls.tabs { border-top: none; }
 .panel-canvas {
+  order: 1;
   position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
+  flex: 1;
+  min-width: 0;
+  height: 640px;
   background: #05060a;
 }
 .panel-canvas.dual { display: flex; }
@@ -158,7 +158,7 @@ canvas { display: block; }
   color: var(--muted);
 }
 .field.inline { flex-direction: row; align-items: center; gap: 0.5rem; }
-.field input[type="range"] { width: 130px; }
+.field input[type="range"] { width: 100%; min-width: 120px; }
 .field input[type="number"] {
   width: 64px;
   background: var(--bg);
@@ -168,6 +168,7 @@ canvas { display: block; }
   padding: 3px 5px;
 }
 .field .val { color: var(--text); font-variant-numeric: tabular-nums; }
+.field.inline input[type="range"] { flex: 1; }
 
 button {
   font: inherit;
@@ -233,8 +234,12 @@ button.tab.active { background: var(--accent); color: #0b0f16; border-color: var
 .summary-card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.2rem 1.4rem; }
 .summary-card h3 { margin-top: 0; color: var(--accent); font-size: 1rem; }
 .summary-card p { color: var(--muted); margin-bottom: 0; }
-@media (max-width: 700px) {
+/* 狭い画面用の最低限のフォールバック（本サイトはデスクトップ優先） */
+@media (max-width: 980px) {
   .summary-grid { grid-template-columns: 1fr; }
+  .panel { flex-direction: column; }
+  .panel-controls { width: auto; flex: none; max-height: none; border-right: none; border-bottom: 1px solid var(--border); }
+  .panel-canvas { height: 460px; }
   .panel-canvas.dual { flex-direction: column; }
   .panel-canvas.dual > .sub-canvas { width: 100%; height: 50%; }
   .panel-canvas.dual > .sub-canvas + .sub-canvas { border-left: none; border-top: 1px solid var(--border); }
@@ -257,9 +262,9 @@ button.tab.active { background: var(--accent); color: #0b0f16; border-color: var
   border-bottom: 1px solid var(--border);
 }
 .site-header-inner {
-  max-width: 900px;
+  max-width: 1460px;
   margin: 0 auto;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 1.5rem;
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -288,10 +293,24 @@ button.tab.active { background: var(--accent); color: #0b0f16; border-color: var
 .site-header .chapter-nav a:hover { color: var(--text); background: var(--panel); }
 .site-header .chapter-nav a.current { color: var(--accent); font-weight: 700; }
 
+/* デスクトップ優先: ページ全体は広く使い、文章ブロックだけ読みやすい幅に絞る */
 .lesson {
-  max-width: 860px;
+  max-width: 1460px;
   margin: 0 auto;
-  padding: 2.5rem 1.4rem 4rem;
+  padding: 2.5rem 2rem 4rem;
+}
+.lesson-head,
+.lesson .goals,
+.lesson .recap,
+.lesson .prose,
+.lesson .quiz,
+.lesson .terms-box,
+.lesson .next-preview,
+.lesson .pager,
+.lesson .checklist {
+  max-width: 920px;
+  margin-left: auto;
+  margin-right: auto;
 }
 .lesson-head { margin-bottom: 2rem; }
 .lesson-no { color: var(--accent); font-weight: 800; letter-spacing: 0.06em; margin: 0 0 0.3rem; font-size: 0.9rem; }
