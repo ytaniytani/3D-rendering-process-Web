@@ -30,6 +30,14 @@ pages/
   ch5-meshlet.html            第5章  Meshlet
   ch6-nanite.html             第6章  Nanite
   ch7-summary.html            第7章  まとめ・卒業クイズ
+math/                 数学トラック「数式のとびら」（任意・全7ページ）
+  index.html                  M0 数学のとびら（入口・生きた数式の練習）
+  m1-negative-grid.html       M1 負の数と座標平面
+  m2-trig.html                M2 三角比 sin/cos
+  m3-vector.html              M3 ベクトル
+  m4-matrix.html              M4 行列
+  m5-dot-normal.html          M5 内積と光
+  m6-projection-math.html     M6 投影の式
 css/style.css         共通スタイル
 js/
   site.js             共通機能（章ナビ・前後ページャー・クイズ・ガイド付きツアー・チェックリスト）

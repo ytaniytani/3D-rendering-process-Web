@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>M5: 内積と光 | 3DCG描画のしくみ</title>
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+
+<article class="lesson">
+  <header class="lesson-head">
+    <p class="lesson-no">数学トラック M5（7ページ中の6ページ目）</p>
+    <h1>内積 ― 「面の向きと光」を1つの掛け算にする</h1>
+    <p class="lesson-sub">本編ch3bの照明計算「法線が光源を向いているほど明るい」。あの日本語の判断文が、たった1つの計算に化ける瞬間を見ます。</p>
+  </header>
+
+  <section class="recap">
+    <h2>⏪ このページに必要な道具</h2>
+    <ul>
+      <li>M3: ベクトル＝矢印。法線は長さ1の単位ベクトル</li>
+      <li>本編<a href="../pages/ch3b-lighting.html">第3章b</a>: 「面が光源を向くほど明るい」という照明の骨格</li>
+    </ul>
+    <p class="recap-link"><a href="m3-vector.html">→ M3を読み直す</a></p>
+  </section>
+
+  <section class="prose">
+
+    <h2>1. 問題設定: 「どれくらい同じ方向を向いているか」を数にしたい</h2>
+    <p>照明計算に必要なのは、法線の矢印<strong>n</strong>と、光源への矢印<strong>l</strong>（エル。ライトの頭文字）が「どれくらい向きが揃っているか」という<strong>1個の数</strong>です。完全に同じ向きなら1、直角なら0、真逆なら−1になるような数が欲しい。それがあれば、そのまま明るさに使えます。</p>
+    <p>この数を作る演算が<strong>内積</strong>です。</p>
+
+    <div class="symbol-intro">
+      <span class="sym">n · l</span>
+      <span class="desc"><b>エヌ・ドット・エル（内積）</b>。ベクトル同士の「·」は普通の掛け算ではなく内積という別の演算を表す。結果はベクトルではなく<b>1個の数</b>になるのがポイント。</span>
+    </div>
+
+    <h2>2. 計算規則は「成分ごとに掛けて、足す」だけ</h2>
+
+    <div class="formula" id="f-dot">
+      <span class="term" data-t="dot" data-c="c">n · l</span> <span class="op">=</span> <span class="term" data-t="nx" data-c="a">nₓ</span><span class="op">·</span><span class="term" data-t="lx" data-c="b">lₓ</span> <span class="op">＋</span> <span class="term" data-t="ny" data-c="a">nᵧ</span><span class="op">·</span><span class="term" data-t="ly" data-c="b">lᵧ</span>
+    </div>
+    <p class="formula-read">内積は、横成分同士の積と、縦成分同士の積を足したもの。（3Dなら z成分同士の積も足す。項が1個増えるだけ）</p>
+    <p class="formula-vals" id="v-dot"></p>
+
+    <p>規則は簡単ですが、なぜこれが「向きの揃い具合」になるのか。両方が<strong>長さ1</strong>（M3の単位ベクトル）のとき、内積の値はちょうど<strong>2本の矢印の間の角度のcos</strong>になります（M2の単位円を思い出してください: cosは「角度0で1、90°で0、180°で−1」と減っていく数でした）。つまり法線を長さ1にそろえておいたのは、<strong>内積がそのまま「向きの揃い具合メーター」として読めるようにするための下準備</strong>だったのです。M3の伏線がここで回収されます。</p>
+    <p>下のウィジェットで2本の矢印をドラッグして、①同じ向き→1に近づく ②直角→0 ③逆向き→−1、を確かめてください。</p>
+  </section>
+
+  <div class="demo-title"><span class="badge">WIDGET 1</span><h3>向きの揃い具合メーター ― 内積の挙動</h3></div>
+  <div class="panel math" id="m5a-app">
+    <div class="panel-controls" id="m5a-controls"></div>
+    <div class="panel-canvas" id="m5a-canvas"></div>
+  </div>
+  <div class="prose" id="calc1"></div>
+
+  <section class="prose">
+    <h2>3. 照明計算への接続 ― 本編ch3bの正体</h2>
+    <p>あとは読み替えるだけです。<strong>n</strong>を地面の法線、<strong>l</strong>を太陽への向きとすれば:</p>
+    <ul>
+      <li>太陽が真上（法線と一致）→ n·l = 1 → <strong>最大の明るさ</strong></li>
+      <li>太陽が真横（直角）→ n·l = 0 → <strong>光は届かない</strong></li>
+      <li>太陽が裏側 → n·l がマイナス → 物理的に照らせないので<strong>0として扱う</strong>（マイナスの明るさは存在しないため切り上げる。この処理を「0でクランプする」と言います）</li>
+    </ul>
+
+    <div class="formula" id="f-light">
+      <span class="term" data-t="bright" data-c="c">明るさ</span> <span class="op">=</span> max( 0, <span class="term" data-t="dot" data-c="a">n · l</span> )
+    </div>
+    <p class="formula-read">明るさは、内積の値。ただしマイナスになったら0に切り上げる（maxは「2つのうち大きい方を採る」という関数）。</p>
+    <p class="formula-vals" id="v-light"></p>
+
+    <p>本編ch3bで太陽スライダーを回したとき、画面の裏では全ピクセルでこの1行が実行されていました。<strong>「このマスの表面は上向きで、太陽は右上だから明るめ」という日本語の判断文の正体が、この max(0, n·l) です。</strong>下のウィジェットで太陽を回して、地形の各面の明るさが内積の値どおりに変わるのを見てください。</p>
+  </section>
+
+  <div class="demo-title"><span class="badge">WIDGET 2</span><h3>ミニ・ライティング ― 各面の明るさ = max(0, n·l)</h3></div>
+  <div class="panel math" id="m5b-app">
+    <div class="panel-controls" id="m5b-controls"></div>
+    <div class="panel-canvas" id="m5b-canvas"></div>
+  </div>
+  <div class="prose" id="calc2"></div>
+
+  <section class="prose">
+    <div class="misconception">
+      <p><strong>「GPUは影や陰を"見て"判断している」</strong>――GPUは何も見ていません。各マスで n·l という掛け算と足し算を実行しているだけです。それが2百万マス×毎秒60回積み重なると、人間の目には「光が当たっている」ように見える。照明とは、内積の集計結果です。</p>
+    </div>
+
+    <div class="one-line">内積＝成分ごとに掛けて足すと出てくる「向きの揃い具合（cos）」。明るさ = max(0, n·l)。</div>
+
+    <div class="exit-note">残り1ページ。最後のM6は「遠くが小さい」の正体、わり算1回の話です。ここでやめる場合は<a href="../pages/ch3b-lighting.html">本編ch3b</a>へ。太陽スライダーの見え方が変わっているはずです。</div>
+  </section>
+</article>
+
+<script type="module">
+  import { renderMathChrome, bindFormula, calcTime, mathCanvas, mSlider } from "../js/math-common.js";
+  renderMathChrome();
+
+  const D2R = Math.PI / 180;
+
+  // ---- W1: 内積メーター ----
+  const s1 = { na: 90, la: 35 }; // 角度で持つ（両方単位ベクトル）
+  const vDot = document.getElementById("v-dot");
+  const meterHost = document.createElement("div");
+  const w1 = mathCanvas(document.getElementById("m5a-canvas"), {
+    range: 1.7,
+    draw(api) {
+      api.grid(1);
+      const { ctx, toPx, hover } = api;
+      const [ox, oy] = toPx(0, 0); const [ux] = toPx(1, 0);
+      ctx.strokeStyle = "#39404e"; ctx.setLineDash([4, 4]); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(ox, oy, ux - ox, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      const n = [Math.cos(s1.na * D2R), Math.sin(s1.na * D2R)];
+      const l = [Math.cos(s1.la * D2R), Math.sin(s1.la * D2R)];
+      const dot = n[0] * l[0] + n[1] * l[1];
+      api.arrow(0, 0, n[0], n[1], "#8ce8b0", 5, hover === "nx" || hover === "ny");
+      api.label("n（法線）", n[0], n[1], "#8ce8b0", 10, -10);
+      api.arrow(0, 0, l[0], l[1], "#ffcf5f", 5, hover === "lx" || hover === "ly");
+      api.label("l（光源へ）", l[0], l[1], "#ffcf5f", 10, 24);
+      vDot.textContent = `= ${n[0].toFixed(2)}×${l[0].toFixed(2)} ＋ ${n[1].toFixed(2)}×${l[1].toFixed(2)} = ${dot.toFixed(2)}`;
+      const pct = ((dot + 1) / 2) * 100;
+      meterHost.innerHTML = `<div class="vgroup"><div class="vgroup-title">向きの揃い具合 n·l</div>
+        <div style="font-size:1.7rem;font-weight:800;color:${dot > 0.5 ? "var(--ok)" : dot > 0 ? "var(--accent2)" : "var(--warn)"};text-align:center;">${dot.toFixed(2)}</div>
+        <div style="height:10px;border-radius:999px;background:linear-gradient(90deg,var(--warn),#666,var(--ok));position:relative;">
+          <div style="position:absolute;top:-3px;left:calc(${pct}% - 2px);width:4px;height:16px;background:#fff;border-radius:2px;"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:0.68rem;color:var(--muted);"><span>−1 真逆</span><span>0 直角</span><span>+1 一致</span></div></div>`;
+    },
+  });
+  const c1 = document.getElementById("m5a-controls");
+  c1.append(meterHost);
+  mSlider(c1, { label: "法線 n の角度", min: 0, max: 360, step: 5, value: s1.na, format: (v) => `${v}°`, onInput: (v) => { s1.na = v; w1.render(); } });
+  mSlider(c1, { label: "光源方向 l の角度", min: 0, max: 360, step: 5, value: s1.la, format: (v) => `${v}°`, onInput: (v) => { s1.la = v; w1.render(); } });
+  c1.insertAdjacentHTML("beforeend",
+    `<p style="font-size:0.78rem;color:var(--muted);margin:0;">2本を同じ角度にすると1、90°差で0、180°差で−1。矢印はキャンバス上のドラッグでも回せます（近い方の矢印が動きます）。</p>`);
+  bindFormula("#f-dot", w1);
+  w1.canvas.addEventListener("pointerdown", (e) => {
+    const move = (ev) => {
+      const [wx, wy] = w1.toWorld(ev.clientX, ev.clientY);
+      const ang = Math.atan2(wy, wx) / D2R;
+      const norm = (a) => ((a % 360) + 360) % 360;
+      const da = Math.abs(norm(ang) - norm(s1.na)), db = Math.abs(norm(ang) - norm(s1.la));
+      const dda = Math.min(da, 360 - da), ddb = Math.min(db, 360 - db);
+      if (dda <= ddb) s1.na = Math.round(norm(ang) / 5) * 5; else s1.la = Math.round(norm(ang) / 5) * 5;
+      w1.render();
+    };
+    move(e);
+    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  });
+
+  calcTime("#calc1", {
+    q: "n = (0, 1)（真上向きの法線）、l = (1, 0)（真横からの光）のとき n·l は？",
+    prefix: "n·l =", answer: 0,
+    okText: "0×1 ＋ 1×0 = 0。直角なので揃い具合ゼロ。真横からの光は真上向きの面を照らせません。",
+    hint: "横成分同士の積: 0×1。縦成分同士の積: 1×0。足すと？",
+  });
+
+  // ---- W2: ミニ・ライティング ----
+  const s2 = { sun: 60 };
+  const vLight = document.getElementById("v-light");
+  // 山型の地形: 面の並び（法線角度つき）
+  const faces = [
+    { x0: -3, x1: -1.8, ang: 90 },
+    { x0: -1.8, x1: -0.6, ang: 55 },
+    { x0: -0.6, x1: 0.6, ang: 90 },
+    { x0: 0.6, x1: 1.8, ang: 125 },
+    { x0: 1.8, x1: 3, ang: 90 },
+  ];
+  // 高さを作る（面の傾きに沿って積み上げ）
+  function terrain() {
+    const pts = [[-3, -1]];
+    let y = -1;
+    for (const f of faces) {
+      const dx = f.x1 - f.x0;
+      const slope = Math.tan((f.ang - 90) * D2R);
+      y += -slope * dx;
+      pts.push([f.x1, y]);
+    }
+    return pts;
+  }
+  const w2 = mathCanvas(document.getElementById("m5b-canvas"), {
+    range: 3.4,
+    draw(api) {
+      api.grid();
+      const { ctx, toPx, hover } = api;
+      const l = [Math.cos(s2.sun * D2R), Math.sin(s2.sun * D2R)];
+      // 太陽
+      api.dot(2.6 * l[0], 2.6 * l[1], "#ffcf5f", 12);
+      api.label("☀", 2.6 * l[0], 2.6 * l[1], "#ffcf5f", -8, -16);
+      // 地形の各面
+      const pts = terrain();
+      let report = "";
+      faces.forEach((f, i) => {
+        const n = [Math.cos(f.ang * D2R), Math.sin(f.ang * D2R)];
+        const dot = Math.max(0, n[0] * l[0] + n[1] * l[1]);
+        const [ax, ay] = toPx(pts[i][0], pts[i][1]);
+        const [bx, by] = toPx(pts[i + 1][0], pts[i + 1][1]);
+        const g = Math.round(40 + dot * 200);
+        ctx.strokeStyle = `rgb(${g},${g},${Math.round(g * 0.85)})`;
+        ctx.lineWidth = 10;
+        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+        // 法線矢印
+        const mx = (pts[i][0] + pts[i + 1][0]) / 2, my = (pts[i][1] + pts[i + 1][1]) / 2;
+        api.arrow(mx, my, mx + n[0] * 0.55, my + n[1] * 0.55, "#8ce8b0", 2.5, hover === "dot");
+        api.label(dot.toFixed(2), mx + n[0] * 0.7, my + n[1] * 0.7, "#cfd6e4", -12, -6);
+      });
+      vLight.textContent = `太陽の角度 ${s2.sun}° ― 各面の横に付いている数値が max(0, n·l) ＝そのまま明るさです`;
+    },
+  });
+  mSlider("#m5b-controls", { label: "太陽の角度", min: 0, max: 180, step: 5, value: s2.sun, format: (v) => `${v}°`, onInput: (v) => { s2.sun = v; w2.render(); } });
+  document.getElementById("m5b-controls").insertAdjacentHTML("beforeend",
+    `<p style="font-size:0.78rem;color:var(--muted);margin:0;">太陽を動かすと、各面の明るさ（線の色）とn·lの数値が連動します。太陽に正対した面ほど1に近く明るい。裏を向いた面は0（真っ暗）で張り付きます。本編ch3bの太陽スライダーの中身がこれです。</p>`);
+  bindFormula("#f-light", w2);
+
+  calcTime("#calc2", {
+    q: "法線が(0,1)の水平な地面。太陽が真上（l = (0,1)）のとき、明るさ max(0, n·l) は？",
+    prefix: "明るさ =", answer: 1,
+    okText: "0×0＋1×1 = 1。真上からの光で最大の明るさ。正午の地面が一番明るい理由を、式で言えるようになりました。",
+    hint: "n·l = 0×0 ＋ 1×1。マイナスではないのでmaxはそのまま通します。",
+  });
+</script>
+</body>
+</html>

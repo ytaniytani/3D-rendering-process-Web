@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>M0: 数学のとびら | 3DCG描画のしくみ</title>
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+
+<article class="lesson">
+  <header class="lesson-head">
+    <p class="lesson-no">数学トラック M0（全7ページ・任意）</p>
+    <h1>数学のとびら ― ここから先は「おかわり」です</h1>
+    <p class="lesson-sub">本編で「中身は見なくていい」と言い続けた数式を、望んだ人だけが開けるための入口ページ。まず、あなたと5つの約束をします。</p>
+  </header>
+
+  <section class="goals">
+    <h2>🎯 このトラックで手に入るもの</h2>
+    <ul>
+      <li>本編で触った「レシピカード（行列）」「法線と光」「遠近感」の<strong>中身の式が読める</strong>ようになる</li>
+      <li>読めるだけでなく、<strong>すべての式を自分の手で動かして</strong>確かめられる</li>
+      <li>この先シェーダーやTAの資料を開いたとき、数式で目が滑らなくなる</li>
+    </ul>
+  </section>
+
+  <section class="prose">
+
+    <h2>1. まず、これは宿題ではありません</h2>
+    <p>はっきりさせておきます。<strong>このトラックを読まなくても、本編の理解は完結しています。</strong>「なぜ重いのか」「なぜNaniteは平気なのか」をあなたはもう因果関係で説明できます。それで十分に強い。</p>
+    <p>ここから先は、本編を読み終えて「で、あのレシピカードの中身は結局どういう数字なの？」と<em>自分から</em>思ってしまった人のための、おかわりの7ページです。義務感で読むページではありません。</p>
+
+    <h2>2. なぜ学校の数学は怖かったのか</h2>
+    <p>多くの人にとって、数学が苦手になった瞬間はよく似ています。<strong>「その記号が何のためにあるのか」を教わる前に、記号の操作だけを暗記させられた</strong>ときです。sinとは何かを実感する前に加法定理を暗記し、行列が何をするものか知る前に掛け算の手順を覚えさせられた。意味の伴わない記号操作は、大人でも苦痛です。あなたが悪かったのではなく、順序が逆だったのです。</p>
+    <p>このトラックは順序を戻します。<strong>意味と実物が先、記号は後。</strong>あなたは本編で、回転も、遠近感も、光の当たり方も、すでにスライダーで触って知っています。つまり「実物」はもう手の中にある。ここでやるのは、その実物に正式な名前と表記を与えることだけです。</p>
+
+    <h2>3. あなたとの5つの約束</h2>
+    <ol>
+      <li><strong>この扉は任意です。</strong>途中でやめて本編に戻っても、何も失いません。各ページに戻り口を用意しています。</li>
+      <li><strong>一度に導入する新しい記号は1つだけ。</strong>新しい記号が出た段落では、他の新記号は出しません。</li>
+      <li><strong>すべての式は、本編で触ったデモと結びつけます。</strong>式が単独で登場することはありません。「あのスライダーがこの文字だ」を毎回やります。</li>
+      <li><strong>導出や証明はしません。</strong>目標は式を「解ける」ことではなく<strong>「読める」</strong>こと。式の意味が言葉で言えれば合格です。</li>
+      <li><strong>1画面に数式は1つまで。</strong>スクロールするたびに1歩ずつ。急かしません。</li>
+    </ol>
+
+    <h2>4. このトラックの道具: 「生きた数式」</h2>
+    <p>7ページを通して、数式は必ず<strong>触れる状態</strong>で登場します。数式の項（式のパーツ）にマウスを乗せると、右の図の対応する部分が光ります。逆に図を操作すると、式の下の数値がリアルタイムに変わります。<strong>式と絵は、常に地続きです。</strong></p>
+    <p>まず肩慣らしに、誰でも知っている式で道具の使い方だけ体験してください。数式の「縦」「横」「面積」にマウスを乗せてみる。それからスライダーを動かして、式の下の数値が追いかけてくるのを見る。この2つの操作が、この先ずっと使う基本動作です。</p>
+  </section>
+
+  <div class="demo-title"><span class="badge">WIDGET</span><h3>肩慣らし: 生きた数式の操作方法（面積 = 縦 × 横）</h3></div>
+  <div class="prose">
+    <div class="formula" id="f-area">
+      <span class="term" data-t="area" data-c="c">面積</span> <span class="op">=</span> <span class="term" data-t="h" data-c="a">縦</span> <span class="op">×</span> <span class="term" data-t="w" data-c="b">横</span>
+    </div>
+    <p class="formula-read">面積は、縦の長さと横の長さを掛けたもの。</p>
+    <p class="formula-vals" id="v-area"></p>
+  </div>
+  <div class="panel math" id="m0-app">
+    <div class="panel-controls" id="m0-controls"></div>
+    <div class="panel-canvas" id="m0-canvas"></div>
+  </div>
+
+  <section class="prose">
+    <h2>5. 7ページの地図</h2>
+    <ul>
+      <li><a href="m1-negative-grid.html"><strong>M1: 負の数と座標平面</strong></a> ― 多くの人の最初のつまずきを、最初にほぐす</li>
+      <li><a href="m2-trig.html"><strong>M2: 三角比 sin / cos</strong></a> ― 「回転」を数にする道具（本編ch2aのRotationの裏側）</li>
+      <li><a href="m3-vector.html"><strong>M3: ベクトル</strong></a> ― 位置と向きを1セットで持つ（頂点と法線の裏側）</li>
+      <li><a href="m4-matrix.html"><strong>M4: 行列</strong></a> ― ついにレシピカードを開ける（このトラックのクライマックス）</li>
+      <li><a href="m5-dot-normal.html"><strong>M5: 内積と光</strong></a> ― 「向きが合うほど明るい」を1つの掛け算にする</li>
+      <li><a href="m6-projection-math.html"><strong>M6: 投影の式</strong></a> ― 「遠くが小さい」は、わり算1回だった</li>
+    </ul>
+    <p>順番に読むのがおすすめですが、M1〜M3は独立して読めます。M4はM2とM3を、M5はM3を先に読んでおくとスムーズです。</p>
+
+    <div class="exit-note">このページの時点で「やっぱりいいや」と思ったら、それも正しい判断です。<a href="../index.html">表紙に戻る</a>。本編の知識だけで、あなたは現場の議論に十分ついていけます。</div>
+  </section>
+</article>
+
+<script type="module">
+  import { renderMathChrome, bindFormula, mathCanvas, mSlider } from "../js/math-common.js";
+  renderMathChrome();
+
+  const state = { w: 4, h: 2.5 };
+  const vals = document.getElementById("v-area");
+
+  const widget = mathCanvas(document.getElementById("m0-canvas"), {
+    range: 4,
+    draw(api) {
+      api.grid();
+      const { ctx, toPx, hover } = api;
+      const [x0, y0] = toPx(-state.w / 2, -state.h / 2);
+      const [x1, y1] = toPx(state.w / 2, state.h / 2);
+      // 面積の塗り
+      ctx.fillStyle = hover === "area" ? "rgba(140,232,176,0.55)" : "rgba(140,232,176,0.25)";
+      ctx.fillRect(x0, y1, x1 - x0, y0 - y1);
+      // 縦・横の辺
+      ctx.lineWidth = hover === "h" ? 7 : 3;
+      ctx.strokeStyle = "#7cc4ff";
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0, y1); ctx.stroke();
+      ctx.lineWidth = hover === "w" ? 7 : 3;
+      ctx.strokeStyle = "#ffbe7c";
+      ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y0); ctx.stroke();
+      api.label(`縦 ${state.h}`, -state.w / 2, 0, "#7cc4ff", -58, 5);
+      api.label(`横 ${state.w}`, 0, -state.h / 2, "#ffbe7c", -20, 34);
+      vals.textContent = `= ${state.h} × ${state.w} = ${(state.h * state.w).toFixed(1)}`;
+    },
+  });
+
+  mSlider("#m0-controls", { label: "縦", min: 0.5, max: 3.5, step: 0.5, value: state.h, onInput: (v) => { state.h = v; widget.render(); } });
+  mSlider("#m0-controls", { label: "横", min: 0.5, max: 7, step: 0.5, value: state.w, onInput: (v) => { state.w = v; widget.render(); } });
+  document.getElementById("m0-controls").insertAdjacentHTML("beforeend",
+    `<p style="font-size:0.78rem;color:var(--muted);margin:0;">上の数式の「縦」「横」「面積」にマウスを乗せると、図の対応する部分が光ります。これがこのトラックの基本操作です。</p>`);
+
+  bindFormula("#f-area", widget);
+</script>
+</body>
+</html>

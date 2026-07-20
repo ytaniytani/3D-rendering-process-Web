@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>M3: ベクトル | 3DCG描画のしくみ</title>
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+
+<article class="lesson">
+  <header class="lesson-head">
+    <p class="lesson-no">数学トラック M3（7ページ中の4ページ目）</p>
+    <h1>ベクトル ― 位置と向きを「1本の矢印」で持つ</h1>
+    <p class="lesson-sub">本編で出てきた頂点(x, y, z)も、法線（表面の向き）も、正体は同じ「ベクトル」でした。数の3つ組を1個の矢印として扱う、それだけの話です。</p>
+  </header>
+
+  <section class="recap">
+    <h2>⏪ 本編との接続</h2>
+    <ul>
+      <li>本編<a href="../pages/ch1b-vertex-polygon.html">第1章b</a>の頂点は「(x, y, z)の3つ組」だった</li>
+      <li>本編<a href="../pages/ch3a-gbuffer.html">第3章a</a>の法線は「表面の向きを表す矢印」だった</li>
+      <li>この2つを1つの言葉で扱えるようにするのがこのページ</li>
+    </ul>
+  </section>
+
+  <section class="prose">
+
+    <h2>1. ベクトル＝「まとめて1個」として扱う数の組</h2>
+
+    <div class="symbol-intro">
+      <span class="sym">v = (x, y)</span>
+      <span class="desc"><b>ベクトル・ブイ</b>。複数の数の組を「1個のもの」として扱うときの呼び名と記法。3Dなら(x, y, z)の3つ組。書物では太字の<b>v</b>や、vの上に矢印を載せた記法を使うが、意味はどれも同じ「数の組に付けた1つの名前」。</span>
+    </div>
+
+    <p>座標(2, 1)は「場所」を表しました。同じ(2, 1)を、<strong>「原点から右へ2・上へ1だけ進む矢印」</strong>と見なすこともできます。この「矢印としての見方」がベクトルです。数字は同じ、解釈が2通りあるだけ。</p>
+    <ul>
+      <li><strong>位置として読む</strong> → 頂点の座標（本編第1章）</li>
+      <li><strong>向き＋長さとして読む</strong> → 法線・光の方向・移動量（本編第3章）</li>
+    </ul>
+    <p>矢印として読むとき、大事な情報は2つに分解できます。<strong>向き</strong>と<strong>長さ</strong>です。下のウィジェットで矢印の先端をドラッグして、成分(x, y)・向き・長さがどう連動するか見てください。</p>
+
+    <div class="formula" id="f-len">
+      <span class="term" data-t="len" data-c="c">長さ</span> <span class="op">=</span> √( <span class="term" data-t="x" data-c="a">x²</span> <span class="op">＋</span> <span class="term" data-t="y" data-c="b">y²</span> )
+    </div>
+    <p class="formula-read">矢印の長さは、横成分の2乗と縦成分の2乗を足して、平方根（ルート）を取ったもの。中学の三平方の定理そのままです。</p>
+    <p class="formula-vals" id="v-len"></p>
+  </section>
+
+  <div class="demo-title"><span class="badge">WIDGET 1</span><h3>矢印の解剖 ― 成分・向き・長さ</h3></div>
+  <div class="panel math" id="m3a-app">
+    <div class="panel-controls" id="m3a-controls"></div>
+    <div class="panel-canvas" id="m3a-canvas"></div>
+  </div>
+  <div class="prose" id="calc1"></div>
+
+  <section class="prose">
+    <h2>2. ベクトルの足し算＝「矢印のしりとり」</h2>
+    <p>ベクトル同士は足せます。規則は拍子抜けするほど単純で、<strong>成分ごとに足すだけ</strong>。</p>
+
+    <div class="formula" id="f-add">
+      <span class="term" data-t="a" data-c="a">a</span> <span class="op">＋</span> <span class="term" data-t="b" data-c="b">b</span> <span class="op">=</span> ( <span class="term" data-t="ax" data-c="a">aₓ</span><span class="op">＋</span><span class="term" data-t="bx" data-c="b">bₓ</span> , <span class="term" data-t="ay" data-c="a">aᵧ</span><span class="op">＋</span><span class="term" data-t="by" data-c="b">bᵧ</span> )
+    </div>
+    <p class="formula-read">2本の矢印の和は、横成分同士の和と、縦成分同士の和を並べたもの。（aₓは「ベクトルaの横成分」という意味の添え字です）</p>
+    <p class="formula-vals" id="v-add"></p>
+
+    <p>図で見ると、この計算は<strong>「aの矢印の先から、続けてbの矢印を歩く」</strong>ことに対応します。矢印のしりとりです。「東へ2・北へ1歩いてから、東へ1・北へ2歩く」＝「合計で東へ3・北へ3歩いた」。当たり前の話が、成分の足し算と完全に一致します。下のウィジェットで2本の矢印をそれぞれドラッグして確かめてください。</p>
+  </section>
+
+  <div class="demo-title"><span class="badge">WIDGET 2</span><h3>矢印のしりとり ― ベクトルの足し算</h3></div>
+  <div class="panel math" id="m3b-app">
+    <div class="panel-controls" id="m3b-controls"></div>
+    <div class="panel-canvas" id="m3b-canvas"></div>
+  </div>
+  <div class="prose" id="calc2"></div>
+
+  <section class="prose">
+    <h2>3. 長さ1の矢印 ― 法線がいつも「単位ベクトル」な理由</h2>
+    <p>本編第3章aで見た法線（表面の向きの矢印）には、業界の決まりがあります。<strong>長さを必ず1にそろえる</strong>のです。長さ1のベクトルを<strong>単位ベクトル</strong>と呼びます。</p>
+    <p>理由は明快で、法線の仕事は「向きを伝えること」だけだから。長さに情報を持たせないと決めておけば、後の計算（次ページの内積）で「向きの違い」だけを純粋に取り出せます。長さをそろえる操作（正規化）は、<strong>各成分を長さで割るだけ</strong>です。</p>
+
+    <div class="formula" id="f-norm">
+      <span class="term" data-t="n" data-c="c">単位ベクトル</span> <span class="op">=</span> ( <span class="frac"><span><span class="term" data-t="x" data-c="a">x</span></span><span><span class="term" data-t="len" data-c="d">長さ</span></span></span> , <span class="frac"><span><span class="term" data-t="y" data-c="b">y</span></span><span><span class="term" data-t="len" data-c="d">長さ</span></span></span> )
+    </div>
+    <p class="formula-read">元のベクトルの各成分を、そのベクトル自身の長さで割ると、向きが同じで長さ1の矢印になる。</p>
+    <p class="formula-vals" id="v-norm"></p>
+
+    <p>下のウィジェットで矢印をどれだけ伸ばしても、正規化後の緑の矢印は単位円の上から動きません。<strong>「向きだけが残る」</strong>を目で確認してください。</p>
+  </section>
+
+  <div class="demo-title"><span class="badge">WIDGET 3</span><h3>正規化 ― どんな矢印も長さ1に</h3></div>
+  <div class="panel math" id="m3c-app">
+    <div class="panel-controls" id="m3c-controls"></div>
+    <div class="panel-canvas" id="m3c-canvas"></div>
+  </div>
+
+  <section class="prose">
+    <div class="misconception">
+      <p><strong>「ベクトルは物理や数学の専門概念で、3DCGでは裏方の話」</strong>――裏方どころか主役です。頂点も法線も光の向きもカメラの向きも移動量も、GPUが毎フレーム扱うデータのほぼすべてがベクトル。本編で触ってきたデモの中身は、ベクトルの足し算と掛け算の洪水でした。</p>
+    </div>
+
+    <div class="one-line">ベクトルは「数の組を1本の矢印として読む」見方。足し算はしりとり、正規化は向きだけを残す操作。</div>
+
+    <div class="exit-note">ここまで来たら、次のM4（行列）でついに本編の「レシピカード」を開けられます。疲れたら<a href="../pages/ch3a-gbuffer.html">本編ch3a</a>へ戻ってもOK。法線ビューの見え方が、もう少し解像度高く見えるはずです。</div>
+  </section>
+</article>
+
+<script type="module">
+  import { renderMathChrome, bindFormula, calcTime, mathCanvas, mSlider } from "../js/math-common.js";
+  renderMathChrome();
+
+  function drag(w, fn) {
+    w.canvas.addEventListener("pointerdown", (e) => {
+      const move = (ev) => { fn(...w.toWorld(ev.clientX, ev.clientY), ev); w.render(); };
+      move(e);
+      const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+      window.addEventListener("pointermove", move);
+      window.addEventListener("pointerup", up);
+    });
+  }
+
+  // ---- W1: 矢印の解剖 ----
+  const s1 = { x: 3, y: 2 };
+  const vLen = document.getElementById("v-len");
+  const info1 = document.createElement("div");
+  const w1 = mathCanvas(document.getElementById("m3a-canvas"), {
+    range: 4.2,
+    draw(api) {
+      api.grid();
+      const { hover } = api;
+      api.dashed(s1.x, s1.y, s1.x, 0, "#7cc4ff", hover === "x");
+      api.dashed(s1.x, s1.y, 0, s1.y, "#ffbe7c", hover === "y");
+      api.arrow(0, 0, s1.x, 0, "#7cc4ff", 4, hover === "x");
+      api.arrow(s1.x, 0, s1.x, s1.y, "#ffbe7c", 4, hover === "y");
+      api.arrow(0, 0, s1.x, s1.y, "#8ce8b0", 4, hover === "len");
+      const len = Math.hypot(s1.x, s1.y);
+      api.label(`v = (${s1.x.toFixed(1)}, ${s1.y.toFixed(1)})`, s1.x, s1.y, "#8ce8b0", 12, -12);
+      vLen.textContent = `= √(${s1.x.toFixed(1)}² + ${s1.y.toFixed(1)}²) = √${(s1.x * s1.x + s1.y * s1.y).toFixed(1)} = ${len.toFixed(2)}`;
+      info1.innerHTML = `<div class="vgroup"><div class="vgroup-title">この矢印の中身</div>
+        <div style="font-size:0.9rem;line-height:2;">横成分 x: <b style="color:#7cc4ff">${s1.x.toFixed(1)}</b><br>縦成分 y: <b style="color:#ffbe7c">${s1.y.toFixed(1)}</b><br>長さ: <b style="color:#8ce8b0">${len.toFixed(2)}</b></div></div>`;
+    },
+  });
+  document.getElementById("m3a-controls").append(info1);
+  document.getElementById("m3a-controls").insertAdjacentHTML("beforeend",
+    `<p style="font-size:0.78rem;color:var(--muted);margin:0;">矢印の先端をドラッグ。緑の矢印1本は、青（横に進む）＋オレンジ（縦に進む）の2歩に分解できます。式の「x²」「y²」「長さ」にマウスを乗せると対応が光ります。</p>`);
+  drag(w1, (wx, wy) => { s1.x = Math.max(-4, Math.min(4, wx)); s1.y = Math.max(-4, Math.min(4, wy)); });
+  bindFormula("#f-len", w1);
+
+  calcTime("#calc1", {
+    q: "ベクトル(3, 4)の長さは？（3² + 4² = 25。√25は？）",
+    prefix: "長さ =", answer: 5,
+    okText: "√(9+16) = √25 = 5。有名な3:4:5の直角三角形です。",
+    hint: "3²=9、4²=16。足すと25。2乗して25になる数は？",
+  });
+
+  // ---- W2: 足し算 ----
+  const s2 = { ax: 2, ay: 1, bx: 1, by: 2 };
+  const vAdd = document.getElementById("v-add");
+  const w2 = mathCanvas(document.getElementById("m3b-canvas"), {
+    range: 4.6,
+    draw(api) {
+      api.grid();
+      const { hover } = api;
+      const sx = s2.ax + s2.bx, sy = s2.ay + s2.by;
+      // a from origin
+      api.arrow(0, 0, s2.ax, s2.ay, "#7cc4ff", 4, hover === "a" || hover === "ax" || hover === "ay");
+      api.label("a", s2.ax / 2, s2.ay / 2, "#7cc4ff", -18, -8);
+      // b chained (しりとり)
+      api.arrow(s2.ax, s2.ay, sx, sy, "#ffbe7c", 4, hover === "b" || hover === "bx" || hover === "by");
+      api.label("b", s2.ax + s2.bx / 2, s2.ay + s2.by / 2, "#ffbe7c", 12, -8);
+      // sum
+      api.arrow(0, 0, sx, sy, "#8ce8b0", 4, hover === null ? false : !["a","b","ax","ay","bx","by"].includes(hover));
+      api.label(`a＋b = (${sx.toFixed(1)}, ${sy.toFixed(1)})`, sx, sy, "#8ce8b0", 12, 20);
+      vAdd.textContent = `= ( ${s2.ax.toFixed(1)}＋${s2.bx.toFixed(1)} , ${s2.ay.toFixed(1)}＋${s2.by.toFixed(1)} ) = ( ${sx.toFixed(1)}, ${sy.toFixed(1)} )`;
+    },
+  });
+  document.getElementById("m3b-controls").insertAdjacentHTML("beforeend",
+    `<p style="font-size:0.78rem;color:var(--muted);margin:0 0 0.5rem;">青い矢印aの先端／オレンジの矢印bの先端（aの先から生えている方）を、それぞれドラッグできます。緑が合計。どう動かしても「成分ごとの足し算」と一致し続けます。</p>`);
+  drag(w2, (wx, wy) => {
+    // 近い方の先端をつかむ
+    const da = Math.hypot(wx - s2.ax, wy - s2.ay);
+    const db = Math.hypot(wx - (s2.ax + s2.bx), wy - (s2.ay + s2.by));
+    if (da <= db) { s2.ax = Math.max(-4, Math.min(4, wx)); s2.ay = Math.max(-4, Math.min(4, wy)); }
+    else { s2.bx = Math.max(-4, Math.min(4, wx - s2.ax)); s2.by = Math.max(-4, Math.min(4, wy - s2.ay)); }
+  });
+  bindFormula("#f-add", w2);
+
+  calcTime("#calc2", {
+    q: "a = (2, 1)、b = (−3, 2) のとき a＋b は？（マイナスの足し算はM1の「歩き」で）",
+    prefix: "a＋b = (", suffix: ")", answer: [-1, 3],
+    okText: "(2＋(−3), 1＋2) = (−1, 3)。東へ2歩いてから西へ3歩けば、差し引き西へ1です。",
+    hint: "横: 2＋(−3)。縦: 1＋2。成分ごとに別々に計算します。",
+  });
+
+  // ---- W3: 正規化 ----
+  const s3 = { x: 2.6, y: 1.6 };
+  const vN = document.getElementById("v-norm");
+  const w3 = mathCanvas(document.getElementById("m3c-canvas"), {
+    range: 3.4,
+    draw(api) {
+      api.grid();
+      const { ctx, toPx, hover } = api;
+      // 単位円
+      const [ox, oy] = toPx(0, 0); const [ux] = toPx(1, 0);
+      ctx.strokeStyle = "#39404e"; ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.arc(ox, oy, ux - ox, 0, Math.PI * 2); ctx.stroke();
+      ctx.setLineDash([]);
+      const len = Math.hypot(s3.x, s3.y) || 1e-6;
+      const nx = s3.x / len, ny = s3.y / len;
+      api.arrow(0, 0, s3.x, s3.y, "#7cc4ff", 3, hover === "x" || hover === "y" || hover === "len");
+      api.label(`元 (長さ ${len.toFixed(2)})`, s3.x, s3.y, "#7cc4ff", 10, -10);
+      api.arrow(0, 0, nx, ny, "#8ce8b0", 5, hover === "n");
+      api.label(`単位ベクトル (${nx.toFixed(2)}, ${ny.toFixed(2)})`, nx, ny, "#8ce8b0", 12, 24);
+      vN.textContent = `= ( ${s3.x.toFixed(1)}÷${len.toFixed(2)} , ${s3.y.toFixed(1)}÷${len.toFixed(2)} ) = ( ${nx.toFixed(2)}, ${ny.toFixed(2)} ) ← 長さ ${Math.hypot(nx, ny).toFixed(2)}`;
+    },
+  });
+  document.getElementById("m3c-controls").insertAdjacentHTML("beforeend",
+    `<p style="font-size:0.78rem;color:var(--muted);margin:0;">青い矢印をどれだけ伸ばしても縮めても、緑（正規化後）は点線の単位円から出ません。向きの情報だけが残っています。これが法線の標準の姿です。</p>`);
+  drag(w3, (wx, wy) => { s3.x = Math.max(-3.2, Math.min(3.2, wx)); s3.y = Math.max(-3.2, Math.min(3.2, wy)); });
+  bindFormula("#f-norm", w3);
+</script>
+</body>
+</html>

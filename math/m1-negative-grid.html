@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>M1: 負の数と座標平面 | 3DCG描画のしくみ</title>
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+
+<article class="lesson">
+  <header class="lesson-head">
+    <p class="lesson-no">数学トラック M1（7ページ中の2ページ目）</p>
+    <h1>負の数と座標平面 ― つまずきの原点を、最初にほぐす</h1>
+    <p class="lesson-sub">「マイナス×マイナスがなぜプラス？」で数学と気まずくなった人は多いはず。3DCGに必要な範囲だけ、実物を触って仲直りします。</p>
+  </header>
+
+  <section class="recap">
+    <h2>⏪ 本編との接続</h2>
+    <ul>
+      <li>本編<a href="../pages/ch1-coordinates.html">第1章</a>で、座標＝原点基準の住所、マイナス＝向きが逆なだけ、と学んだ</li>
+      <li>このページはその「マイナス」を、計算まで含めて使える道具にする</li>
+    </ul>
+  </section>
+
+  <section class="prose">
+
+    <h2>1. マイナスの数は「向きを持った数」</h2>
+    <p>普通の数（正の数）は「量」だけを表します。3は3個の3。ところが座標の世界の数は、<strong>量と向きの両方</strong>を運びます。+3は「プラス方向へ3」、−3は「マイナス方向へ3」。<strong>符号（+/−）は向き、絶対値（数字部分）は量</strong>。この分解が今日の一番の道具です。</p>
+    <p>下の数直線で点をドラッグしてください。0の右では符号がプラス、左に越えた瞬間マイナスに変わります。数字の大きさ（量）と符号（向き）が別々の情報として表示されるのを確認してください。</p>
+  </section>
+
+  <div class="demo-title"><span class="badge">WIDGET 1</span><h3>数直線 ― 符号は向き、絶対値は量</h3></div>
+  <div class="panel math" id="m1a-app">
+    <div class="panel-controls" id="m1a-controls"></div>
+    <div class="panel-canvas" id="m1a-canvas" style="height:220px;"></div>
+  </div>
+
+  <section class="prose">
+    <h2>2. 「マイナスを足す」＝逆向きに歩く</h2>
+    <p>計算に入ります。まず足し算。<strong>「＋」は「その向きに歩く」</strong>と読み替えると、負の数の足し算は一切暗記が要らなくなります。</p>
+
+    <div class="symbol-intro">
+      <span class="sym">x′</span>
+      <span class="desc"><b>エックスプライム</b>と読む。「変換後のx」という意味の記号。元のxと区別するために右肩に印（′）を付けただけで、中身はただの数。この記号はこの先の全ページで使う。</span>
+    </div>
+
+    <div class="formula" id="f-add">
+      <span class="term" data-t="xp" data-c="c">x′</span> <span class="op">=</span> <span class="term" data-t="x" data-c="a">x</span> <span class="op">+</span> <span class="term" data-t="d" data-c="b">d</span>
+    </div>
+    <p class="formula-read">移動後の位置 x′ は、元の位置 x から、距離 d のぶんだけ（dの符号の向きに）歩いた場所。</p>
+    <p class="formula-vals" id="v-add"></p>
+
+    <p>dがプラスなら右へ、マイナスなら左へ。<strong>「−3を足す」とは「左へ3歩く」ことです。</strong>下のウィジェットで x と d を別々に動かして、式の項と図の対応を確かめてください（式の x, d, x′ にマウスを乗せると図が光ります）。</p>
+  </section>
+
+  <div class="demo-title"><span class="badge">WIDGET 2</span><h3>平行移動 x′ = x + d ― 本編ch2aの「Position」の正体</h3></div>
+  <div class="panel math" id="m1b-app">
+    <div class="panel-controls" id="m1b-controls"></div>
+    <div class="panel-canvas" id="m1b-canvas" style="height:260px;"></div>
+  </div>
+  <div class="prose" id="calc1"></div>
+
+  <section class="prose">
+    <h2>3. 「マイナスを掛ける」＝向きの反転</h2>
+    <p>次は掛け算。ここも読み替え1つで終わります。<strong>「×(−1)」は「向きを反転する」操作</strong>です。</p>
+    <ul>
+      <li>+3 ×(−1) → −3（右向きだったものが左向きに）</li>
+      <li>−3 ×(−1) → +3（左向きだったものが右向きに。<strong>反転の反転で元に戻る</strong>）</li>
+    </ul>
+    <p>「マイナス×マイナスがプラスになる」のは規則の暗記ではなく、<strong>「反転を2回すると元の向き」という当たり前の話</strong>だったのです。×(−2)なら「反転して2倍」。下のウィジェットで倍率スライダーをマイナス側に振って、点が原点の反対側へ跳ぶのを見てください。</p>
+
+    <div class="formula" id="f-mul">
+      <span class="term" data-t="xp" data-c="c">x′</span> <span class="op">=</span> <span class="term" data-t="k" data-c="b">k</span> <span class="op">×</span> <span class="term" data-t="x" data-c="a">x</span>
+    </div>
+    <p class="formula-read">新しい位置 x′ は、元の位置 x を k 倍した場所。kがマイナスなら原点をはさんで反対側。</p>
+    <p class="formula-vals" id="v-mul"></p>
+  </section>
+
+  <div class="demo-title"><span class="badge">WIDGET 3</span><h3>拡大と反転 x′ = k·x ― 本編ch2aの「Scale」の正体</h3></div>
+  <div class="panel math" id="m1c-app">
+    <div class="panel-controls" id="m1c-controls"></div>
+    <div class="panel-canvas" id="m1c-canvas" style="height:260px;"></div>
+  </div>
+  <div class="prose" id="calc2"></div>
+
+  <section class="prose">
+    <h2>4. 座標平面の4つの部屋（象限）</h2>
+    <p>XとYの2方向にマイナスがあると、平面は4つの区画に分かれます。学校では第1〜第4象限と呼びました。名前はどうでもよく、大事なのは<strong>「符号のペア(+,−)を見れば、どの区画か即答できる」</strong>ことだけです。3DCGでは頂点座標が平気でマイナスになるので、この読み取りが無意識にできると楽になります。</p>
+    <p>下の平面で点をドラッグして、符号ペアの変化と区画の対応を体で覚えてください。</p>
+  </section>
+
+  <div class="demo-title"><span class="badge">WIDGET 4</span><h3>4つの区画 ― 符号ペア(±, ±)で場所が決まる</h3></div>
+  <div class="panel math" id="m1d-app">
+    <div class="panel-controls" id="m1d-controls"></div>
+    <div class="panel-canvas" id="m1d-canvas"></div>
+  </div>
+
+  <section class="prose">
+    <div class="misconception">
+      <p><strong>「マイナスの計算は規則を暗記するもの」</strong>――暗記した規則は忘れますが、意味は忘れません。「＋は歩く」「×(−1)は反転」。この2つの読み替えだけで、3DCGで出会う負の数の計算はすべて意味から再構成できます。</p>
+    </div>
+
+    <div class="one-line">符号は向き、絶対値は量。足し算は歩き、マイナスの掛け算は反転。</div>
+
+    <div class="exit-note">ここまでで一区切りです。難しく感じたら<a href="../pages/ch1-coordinates.html">本編第1章</a>に戻ってOK。続けられそうなら、次はいよいよ「回転」を数にする道具、sin / cos へ。</div>
+  </section>
+</article>
+
+<script type="module">
+  import { renderMathChrome, bindFormula, calcTime, mathCanvas, mSlider } from "../js/math-common.js";
+  renderMathChrome();
+
+  // ---- W1: 数直線 ----
+  const s1 = { x: 2.5 };
+  const info1 = document.createElement("div");
+  const w1 = mathCanvas(document.getElementById("m1a-canvas"), {
+    range: 5,
+    draw(api) {
+      const { ctx, toPx } = api;
+      ctx.clearRect(0, 0, api.canvas.width, api.canvas.height);
+      ctx.fillStyle = "#05060a";
+      ctx.fillRect(0, 0, api.canvas.width, api.canvas.height);
+      const [, cy] = toPx(0, 0);
+      ctx.strokeStyle = "#39404e"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(api.canvas.width, cy); ctx.stroke();
+      ctx.fillStyle = "#5b6473"; ctx.font = "13px sans-serif";
+      for (let i = -5; i <= 5; i++) {
+        const [tx] = toPx(i, 0);
+        ctx.beginPath(); ctx.moveTo(tx, cy - 6); ctx.lineTo(tx, cy + 6); ctx.strokeStyle = "#5b6473"; ctx.stroke();
+        ctx.fillText(String(i), tx - 6, cy + 24);
+      }
+      api.arrow(0, 0, s1.x, 0, s1.x >= 0 ? "#5fe0a0" : "#ff9e9e", 4);
+      api.dot(s1.x, 0, "#ffcf5f", 9);
+      info1.innerHTML = `<div class="vgroup"><div class="vgroup-title">この点の読み方</div>
+        <div style="font-size:1.2rem;">値: <b style="color:var(--accent)">${s1.x.toFixed(1)}</b></div>
+        <div style="font-size:0.85rem;color:var(--muted);">符号（向き）: <b style="color:${s1.x >= 0 ? "var(--ok)" : "var(--warn)"}">${s1.x >= 0 ? "＋（右向き）" : "−（左向き）"}</b><br>
+        絶対値（量）: <b>${Math.abs(s1.x).toFixed(1)}</b></div></div>`;
+    },
+  });
+  document.getElementById("m1a-controls").append(info1);
+  document.getElementById("m1a-controls").insertAdjacentHTML("beforeend",
+    `<p style="font-size:0.78rem;color:var(--muted);margin:0;">数直線上の黄色い点を左右にドラッグしてください。</p>`);
+  w1.canvas.addEventListener("pointerdown", (e) => {
+    const move = (ev) => { s1.x = Math.max(-5, Math.min(5, w1.toWorld(ev.clientX, ev.clientY)[0])); w1.render(); };
+    move(e);
+    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  });
+
+  // ---- W2: x' = x + d ----
+  const s2 = { x: 1, d: -3 };
+  const vAdd = document.getElementById("v-add");
+  const w2 = mathCanvas(document.getElementById("m1b-canvas"), {
+    range: 6,
+    draw(api) {
+      const { ctx, toPx, hover } = api;
+      ctx.clearRect(0, 0, api.canvas.width, api.canvas.height);
+      ctx.fillStyle = "#05060a"; ctx.fillRect(0, 0, api.canvas.width, api.canvas.height);
+      const [, cy] = toPx(0, 0);
+      ctx.strokeStyle = "#39404e"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(api.canvas.width, cy); ctx.stroke();
+      ctx.fillStyle = "#5b6473"; ctx.font = "13px sans-serif";
+      for (let i = -6; i <= 6; i++) { const [tx] = toPx(i, 0); ctx.fillText(String(i), tx - 6, cy + 24); }
+      // x
+      api.dot(s2.x, 0, "#7cc4ff", 8, hover === "x");
+      api.label("x", s2.x, 0, "#7cc4ff", -6, -18);
+      // 歩き（d）
+      api.arrow(s2.x, 0.5, s2.x + s2.d, 0.5, "#ffbe7c", 4, hover === "d");
+      // x'
+      api.dot(s2.x + s2.d, 0, "#8ce8b0", 8, hover === "xp");
+      api.label("x′", s2.x + s2.d, 0, "#8ce8b0", -8, -18);
+      vAdd.textContent = `= ${s2.x} + (${s2.d}) = ${(s2.x + s2.d).toFixed(1)}`;
+    },
+  });
+  mSlider("#m1b-controls", { label: "元の位置 x", min: -4, max: 4, step: 0.5, value: s2.x, onInput: (v) => { s2.x = v; w2.render(); } });
+  mSlider("#m1b-controls", { label: "移動量 d（マイナス＝左へ歩く）", min: -5, max: 5, step: 0.5, value: s2.d, onInput: (v) => { s2.d = v; w2.render(); } });
+  bindFormula("#f-add", w2);
+
+  calcTime("#calc1", {
+    q: "x = 2 の点を d = −5 だけ移動すると、x′ はいくつ？（式: x′ = x + d）",
+    prefix: "x′ =", answer: -3,
+    okText: "右2の位置から左へ5歩けば −3。「＋は歩く」の読み替え通りです。",
+    hint: "2から左へ5歩、数直線をたどってみてください。",
+  });
+
+  // ---- W3: x' = k·x ----
+  const s3 = { x: 2, k: -1.5 };
+  const vMul = document.getElementById("v-mul");
+  const w3 = mathCanvas(document.getElementById("m1c-canvas"), {
+    range: 6,
+    draw(api) {
+      const { ctx, toPx, hover } = api;
+      ctx.clearRect(0, 0, api.canvas.width, api.canvas.height);
+      ctx.fillStyle = "#05060a"; ctx.fillRect(0, 0, api.canvas.width, api.canvas.height);
+      const [, cy] = toPx(0, 0);
+      ctx.strokeStyle = "#39404e"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(api.canvas.width, cy); ctx.stroke();
+      ctx.fillStyle = "#5b6473"; ctx.font = "13px sans-serif";
+      for (let i = -6; i <= 6; i++) { const [tx] = toPx(i, 0); ctx.fillText(String(i), tx - 6, cy + 24); }
+      api.dot(0, 0, "#5b6473", 5);
+      api.arrow(0, 0.35, s3.x, 0.35, "#7cc4ff", 4, hover === "x");
+      api.label("x", s3.x, 0.4, "#7cc4ff", -5, -12);
+      api.arrow(0, -0.35, s3.k * s3.x, -0.35, "#8ce8b0", 4, hover === "xp" || hover === "k");
+      api.label("x′", s3.k * s3.x, -0.5, "#8ce8b0", -8, 30);
+      vMul.textContent = `= ${s3.k} × ${s3.x} = ${(s3.k * s3.x).toFixed(1)}`;
+    },
+  });
+  mSlider("#m1c-controls", { label: "元の位置 x", min: -4, max: 4, step: 0.5, value: s3.x, onInput: (v) => { s3.x = v; w3.render(); } });
+  mSlider("#m1c-controls", { label: "倍率 k（マイナス＝反転して拡大）", min: -3, max: 3, step: 0.5, value: s3.k, onInput: (v) => { s3.k = v; w3.render(); } });
+  document.getElementById("m1c-controls").insertAdjacentHTML("beforeend",
+    `<p style="font-size:0.78rem;color:var(--muted);margin:0;">kを0をまたいでマイナスへ。x′（緑）が原点の反対側へ跳ぶ＝反転です。</p>`);
+  bindFormula("#f-mul", w3);
+
+  calcTime("#calc2", {
+    q: "x = −2 の点に k = −3 を掛けると、x′ はいくつ？（反転の反転に注意）",
+    prefix: "x′ =", answer: 6,
+    okText: "左向きの−2を反転して3倍 → 右向きの6。マイナス×マイナス＝プラスは「反転2回」のことでした。",
+    hint: "「反転して3倍」。−2の反転は＋2、それを3倍すると？",
+  });
+
+  // ---- W4: 4区画 ----
+  const s4 = { x: 2.2, y: 1.4 };
+  const info4 = document.createElement("div");
+  const w4 = mathCanvas(document.getElementById("m1d-canvas"), {
+    range: 4,
+    draw(api) {
+      api.grid();
+      const { ctx, toPx } = api;
+      // 現在の象限を塗る
+      const qx = s4.x >= 0 ? 1 : -1, qy = s4.y >= 0 ? 1 : -1;
+      const [ox, oy] = toPx(0, 0);
+      const [ex, ey] = toPx(qx * 4.5, qy * 4.5);
+      ctx.fillStyle = "rgba(95,180,255,0.10)";
+      ctx.fillRect(Math.min(ox, ex), Math.min(oy, ey), Math.abs(ex - ox), Math.abs(ey - oy));
+      api.dashed(s4.x, s4.y, s4.x, 0, "#7cc4ff");
+      api.dashed(s4.x, s4.y, 0, s4.y, "#ffbe7c");
+      api.dot(s4.x, s4.y, "#ffcf5f", 9);
+      api.label(`(${s4.x.toFixed(1)}, ${s4.y.toFixed(1)})`, s4.x, s4.y, "#fff", 12, -12);
+      const names = { "1,1": "右上の区画（第1象限）", "-1,1": "左上の区画（第2象限）", "-1,-1": "左下の区画（第3象限）", "1,-1": "右下の区画（第4象限）" };
+      info4.innerHTML = `<div class="vgroup"><div class="vgroup-title">符号ペアの読み取り</div>
+        <div style="font-size:1.1rem;">( <b style="color:#7cc4ff">${s4.x >= 0 ? "＋" : "−"}</b> , <b style="color:#ffbe7c">${s4.y >= 0 ? "＋" : "−"}</b> )</div>
+        <div style="font-size:0.85rem;color:var(--muted);">${names[`${qx},${qy}`]}</div></div>`;
+    },
+  });
+  document.getElementById("m1d-controls").append(info4);
+  document.getElementById("m1d-controls").insertAdjacentHTML("beforeend",
+    `<p style="font-size:0.78rem;color:var(--muted);margin:0;">点をドラッグして4つの区画を行き来してください。符号ペアだけ見れば場所が分かります。</p>`);
+  w4.canvas.addEventListener("pointerdown", (e) => {
+    const move = (ev) => { const [wx, wy] = w4.toWorld(ev.clientX, ev.clientY); s4.x = Math.max(-4, Math.min(4, wx)); s4.y = Math.max(-4, Math.min(4, wy)); w4.render(); };
+    move(e);
+    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>M2: 三角比 sin / cos | 3DCG描画のしくみ</title>
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+
+<article class="lesson">
+  <header class="lesson-head">
+    <p class="lesson-no">数学トラック M2（7ページ中の3ページ目）</p>
+    <h1>三角比 sin / cos ― 「回転」を数にする</h1>
+    <p class="lesson-sub">本編ch2aで回したRotationスライダー。あの裏側で働いていたのが sin と cos です。三角形の暗記は忘れてください。ここでは「回転の道具」として再入門します。</p>
+  </header>
+
+  <section class="recap">
+    <h2>⏪ 本編との接続</h2>
+    <ul>
+      <li>本編<a href="../pages/ch2a-local-world.html">第2章a</a>で、Transformの「Rotation」で木や岩を回した</li>
+      <li>「回した後の頂点の座標」をGPUは数値で求めている。その計算道具がこのページの主役</li>
+    </ul>
+  </section>
+
+  <section class="prose">
+
+    <h2>1. 問題設定: 「回す」を数でどう書く？</h2>
+    <p>点(2, 0)を、原点を中心に30°回したい。回した後の座標はいくつになるでしょう？　……これ、意外と困りませんか。足し算（平行移動）や掛け算（拡大）と違って、<strong>「回転」をそのまま計算する道具を、私たちは中学までに持っていません</strong>。その穴を埋めるのが sin と cos です。</p>
+
+    <h2>2. 単位円 ― sinとcosの実物</h2>
+    <p>半径1の円（単位円）を描き、円周上の点を角度で指定します。ここで2つの記号を導入します。まず角度から。</p>
+
+    <div class="symbol-intro">
+      <span class="sym">θ</span>
+      <span class="desc"><b>シータ</b>と読む。角度を表す変数。単位は度（°）。「角度を文字で置くときはθを使う」という業界共通の慣習で、それ以上の意味はない。</span>
+    </div>
+
+    <p>そして本題。<strong>角度θの方向へ半径1だけ進んだ点の、横の座標が cos θ、縦の座標が sin θ</strong>。これが定義のすべてです。</p>
+
+    <div class="symbol-intro">
+      <span class="sym">cos θ / sin θ</span>
+      <span class="desc"><b>コサイン・シータ／サイン・シータ</b>と読む。単位円上で角度θの位置にある点の<b>横の座標がcos θ、縦の座標がsin θ</b>。つまり「角度を入れると座標のペアが出てくる変換装置」。</span>
+    </div>
+
+    <div class="formula" id="f-circle">
+      円周上の点 <span class="op">=</span> ( <span class="term" data-t="cos" data-c="a">cos θ</span> , <span class="term" data-t="sin" data-c="b">sin θ</span> )
+    </div>
+    <p class="formula-read">角度θの方向へ1進んだ点の住所は、横がcos θ、縦がsin θ。</p>
+    <p class="formula-vals" id="v-circle"></p>
+
+    <p>下のウィジェットで角度スライダーを一周させてください。見てほしいのは3つです。①横棒（cos）と縦棒（sin）が角度に連れて伸び縮みする。②どちらも<strong>−1から+1の範囲しか出ない</strong>（半径1の円からはみ出せないから）。③90°でcosが0になる（真上に進むと横方向の成分がなくなるから）。</p>
+  </section>
+
+  <div class="demo-title"><span class="badge">WIDGET 1</span><h3>単位円 ― 角度1つから座標ペアが出てくる装置</h3></div>
+  <div class="panel math" id="m2a-app">
+    <div class="panel-controls" id="m2a-controls"></div>
+    <div class="panel-canvas" id="m2a-canvas"></div>
+  </div>
+  <div class="prose" id="calc1"></div>
+
+  <section class="prose">
+    <h2>2.5 直感の補助線: 観覧車</h2>
+    <div class="analogy">
+      <p>観覧車のゴンドラを思い浮かべてください。ゴンドラの<strong>高さ</strong>は、回転角に連れて上がって、てっぺんで最大になり、また下がる――これがsinの動きです。一方、ゴンドラの<strong>真下の影の位置</strong>（中心からの水平距離）は、横で最大、てっぺんで0になる――これがcosです。sinもcosも、回転という1つの動きを「縦だけ」「横だけ」で計測した値にすぎません。</p>
+    </div>
+
+    <h2>3. 半径が1じゃないとき ― 掛けるだけ</h2>
+    <p>単位円は半径1でした。半径r（アール。任意の長さを表す文字）の円なら、座標は単純に全部r倍になります: (r·cos θ, r·sin θ)。<strong>「向きはθが決め、長さはrが決める」</strong>という分業です。この形は3DCGのあちこちに顔を出します（本編のカメラ旋回もこの式で書かれています）。</p>
+
+    <h2>4. 本丸: 点を回す式（回転の公式）</h2>
+    <p>準備が整いました。任意の点(x, y)を原点中心にθ回した後の座標(x′, y′)は、こう書けます。このトラックで最初の「2行の式」ですが、構造は同じ形の繰り返しです。</p>
+
+    <div class="formula" id="f-rot">
+      <span class="term" data-t="xp" data-c="c">x′</span> <span class="op">=</span> <span class="term" data-t="x" data-c="a">x</span><span class="op">·</span><span class="term" data-t="cos" data-c="a">cos θ</span> <span class="op">−</span> <span class="term" data-t="y" data-c="b">y</span><span class="op">·</span><span class="term" data-t="sin" data-c="b">sin θ</span>
+      <br>
+      <span class="term" data-t="yp" data-c="c">y′</span> <span class="op">=</span> <span class="term" data-t="x" data-c="a">x</span><span class="op">·</span><span class="term" data-t="sin" data-c="a">sin θ</span> <span class="op">＋</span> <span class="term" data-t="y" data-c="b">y</span><span class="op">·</span><span class="term" data-t="cos" data-c="b">cos θ</span>
+    </div>
+    <p class="formula-read">新しいxは「元のxをcos倍したもの」から「元のyをsin倍したもの」を引いた値。新しいyは「元のxをsin倍したもの」と「元のyをcos倍したもの」を足した値。</p>
+    <p class="formula-vals" id="v-rot"></p>
+
+    <p>なぜこの形でうまくいくのか、意味だけ説明します。点(x, y)は「横にx、縦にy」進んだ場所です。回転後の世界では、<strong>「横に1進む」こと自体が(cos θ, sin θ)へ進むことに変わり、「縦に1進む」ことは(−sin θ, cos θ)へ進むことに変わります</strong>（単位円で確かめた通り）。だから回転後の位置は「新しい横方向へx個ぶん＋新しい縦方向へy個ぶん」を合算したもの――それを成分ごとに書き下したのが上の2行です。<em>回転の公式は、単位円の事実を2方向ぶん並べただけ</em>なのです。</p>
+    <p>下のウィジェットで点をドラッグし、θを回してください。式の各項にマウスを乗せると、対応する図形（元の点・回転後の点・角度の弧）が光ります。</p>
+  </section>
+
+  <div class="demo-title"><span class="badge">WIDGET 2</span><h3>回転マシン ― 本編ch2aのRotationスライダーの中身</h3></div>
+  <div class="panel math" id="m2b-app">
+    <div class="panel-controls" id="m2b-controls"></div>
+    <div class="panel-canvas" id="m2b-canvas"></div>
+  </div>
+  <div class="prose" id="calc2"></div>
+
+  <section class="prose">
+    <div class="misconception">
+      <p><strong>「sin・cosは三角形の辺の比を暗記する科目」</strong>――学校ではそう習いましたが、3DCGでの実用上は<strong>「回転を座標に翻訳する装置」</strong>と捉えるほうが本質に近い。直角三角形の定義と単位円の定義は同じものの別の見方ですが、CGで毎フレーム働いているのは単位円の顔のほうです。</p>
+    </div>
+
+    <div class="one-line">sinとcosは「角度θの方向へ1進んだ点の縦と横」。回転の公式は、それを2方向ぶん並べただけ。</div>
+
+    <div class="exit-note">2行の式が読めたら、このページは完了です。難しければ<a href="../pages/ch2a-local-world.html">本編ch2a</a>のRotationスライダーに戻って、「裏でこの式が回っている」とだけ思い出せれば十分。次のM3（ベクトル）は独立して読めます。</div>
+  </section>
+</article>
+
+<script type="module">
+  import { renderMathChrome, bindFormula, calcTime, mathCanvas, mSlider } from "../js/math-common.js";
+  renderMathChrome();
+
+  const D2R = Math.PI / 180;
+
+  // ---- W1: 単位円 ----
+  const s1 = { th: 40 };
+  const vC = document.getElementById("v-circle");
+  const w1 = mathCanvas(document.getElementById("m2a-canvas"), {
+    range: 1.6,
+    draw(api) {
+      api.grid(1);
+      const { ctx, toPx, hover } = api;
+      const [ox, oy] = toPx(0, 0);
+      const [rx] = toPx(1, 0);
+      ctx.strokeStyle = "#39404e"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(ox, oy, rx - ox, 0, Math.PI * 2); ctx.stroke();
+      const c = Math.cos(s1.th * D2R), s = Math.sin(s1.th * D2R);
+      // 角度の弧
+      ctx.strokeStyle = "#ffcf5f"; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(ox, oy, (rx - ox) * 0.25, 0, -s1.th * D2R, s1.th > 0); ctx.stroke();
+      // 半径
+      api.arrow(0, 0, c, s, "#e8eaf0", 3);
+      // cos: 横棒
+      api.dashed(c, s, c, 0, "#39404e");
+      api.arrow(0, -0.06, c, -0.06, "#7cc4ff", 5, hover === "cos");
+      api.label(`cos θ = ${c.toFixed(2)}`, c / 2, -0.08, "#7cc4ff", -40, 34);
+      // sin: 縦棒
+      api.dashed(c, s, 0, s, "#39404e");
+      api.arrow(-0.06, 0, -0.06, s, "#ffbe7c", 5, hover === "sin");
+      api.label(`sin θ = ${s.toFixed(2)}`, -0.1, s / 2, "#ffbe7c", -86, 6);
+      api.dot(c, s, "#ffcf5f", 8);
+      api.label(`θ = ${s1.th}°`, 0.32, 0.12, "#ffcf5f", 0, 0);
+      vC.textContent = `θ = ${s1.th}° のとき ( cos θ, sin θ ) = ( ${c.toFixed(2)}, ${s.toFixed(2)} )`;
+    },
+  });
+  mSlider("#m2a-controls", { label: "角度 θ", min: 0, max: 360, step: 5, value: s1.th, format: (v) => `${v}°`, onInput: (v) => { s1.th = v; w1.render(); } });
+  document.getElementById("m2a-controls").insertAdjacentHTML("beforeend",
+    `<p style="font-size:0.78rem;color:var(--muted);margin:0;">θを一周させて、①横棒(cos)と縦棒(sin)の伸び縮み ②値が±1を超えない ③90°でcos=0、を確認。式の「cos θ」「sin θ」にマウスを乗せると棒が光ります。</p>`);
+  bindFormula("#f-circle", w1);
+
+  calcTime("#calc1", {
+    q: "θ = 90° のとき、( cos θ, sin θ ) は？（上のウィジェットを90°に合わせて確かめてOK）",
+    prefix: "( cos θ, sin θ ) = (", suffix: ")", answer: [0, 1],
+    okText: "真上に1進んだ点は(0, 1)。横方向の成分（cos）が0になる、が体感と一致していれば完璧です。",
+    hint: "90°は真上。真上に1進んだ点の横の座標と縦の座標は？",
+  });
+
+  // ---- W2: 回転マシン ----
+  const s2 = { th: 30, x: 2, y: 0 };
+  const vR = document.getElementById("v-rot");
+  const w2 = mathCanvas(document.getElementById("m2b-canvas"), {
+    range: 3.2,
+    draw(api) {
+      api.grid(1);
+      const { ctx, toPx, hover } = api;
+      const c = Math.cos(s2.th * D2R), s = Math.sin(s2.th * D2R);
+      const xp = s2.x * c - s2.y * s;
+      const yp = s2.x * s + s2.y * c;
+      // 回転の軌跡（弧）
+      const r = Math.hypot(s2.x, s2.y);
+      const a0 = Math.atan2(s2.y, s2.x);
+      const [ox, oy] = toPx(0, 0);
+      const [ux] = toPx(1, 0);
+      ctx.strokeStyle = "rgba(255,207,95,0.5)"; ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath(); ctx.arc(ox, oy, r * (ux - ox), -a0, -(a0 + s2.th * D2R), s2.th > 0); ctx.stroke();
+      ctx.setLineDash([]);
+      // 元の点
+      api.arrow(0, 0, s2.x, s2.y, "#7cc4ff", 3, hover === "x" || hover === "y");
+      api.dot(s2.x, s2.y, "#7cc4ff", 8, hover === "x" || hover === "y");
+      api.label(`(x, y) = (${s2.x.toFixed(1)}, ${s2.y.toFixed(1)})`, s2.x, s2.y, "#7cc4ff", 12, 18);
+      // 回転後
+      api.arrow(0, 0, xp, yp, "#8ce8b0", 3, hover === "xp" || hover === "yp");
+      api.dot(xp, yp, "#8ce8b0", 8, hover === "xp" || hover === "yp");
+      api.label(`(x′, y′) = (${xp.toFixed(2)}, ${yp.toFixed(2)})`, xp, yp, "#8ce8b0", 12, -14);
+      vR.textContent = `x′ = ${s2.x.toFixed(1)}×${c.toFixed(2)} − ${s2.y.toFixed(1)}×${s.toFixed(2)} = ${xp.toFixed(2)} ／ y′ = ${s2.x.toFixed(1)}×${s.toFixed(2)} ＋ ${s2.y.toFixed(1)}×${c.toFixed(2)} = ${yp.toFixed(2)}`;
+    },
+  });
+  mSlider("#m2b-controls", { label: "回転角 θ", min: -180, max: 180, step: 5, value: s2.th, format: (v) => `${v}°`, onInput: (v) => { s2.th = v; w2.render(); } });
+  document.getElementById("m2b-controls").insertAdjacentHTML("beforeend",
+    `<p style="font-size:0.78rem;color:var(--muted);margin:0;">青い点（元の位置）はドラッグで動かせます。緑（回転後）が式の計算結果。点線の弧が回転の軌跡です。</p>`);
+  bindFormula("#f-rot", w2);
+  w2.canvas.addEventListener("pointerdown", (e) => {
+    const move = (ev) => { const [wx, wy] = w2.toWorld(ev.clientX, ev.clientY); s2.x = Math.max(-3, Math.min(3, wx)); s2.y = Math.max(-3, Math.min(3, wy)); w2.render(); };
+    move(e);
+    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  });
+
+  calcTime("#calc2", {
+    q: "点(2, 0) を θ = 90° 回すと (x′, y′) は？（cos 90°= 0, sin 90°= 1 を式に入れるだけ）",
+    prefix: "(x′, y′) = (", suffix: ")", answer: [0, 2],
+    okText: "x′ = 2×0 − 0×1 = 0、y′ = 2×1 + 0×0 = 2。右向きの点が真上に立ちました。",
+    hint: "x′ = 2×cos90° − 0×sin90°、y′ = 2×sin90° + 0×cos90° をそのまま計算。",
+  });
+</script>
+</body>
+</html>

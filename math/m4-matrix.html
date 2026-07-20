@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>M4: 行列 | 3DCG描画のしくみ</title>
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+
+<article class="lesson">
+  <header class="lesson-head">
+    <p class="lesson-no">数学トラック M4（7ページ中の5ページ目・クライマックス）</p>
+    <h1>行列 ― ついに「レシピカード」を開ける</h1>
+    <p class="lesson-sub">本編で13ページかけて「中身は見なくていい」と言い続けたワールド行列・ビュー行列。その中身は、たった数個の数字と、驚くほど単純な規則でした。</p>
+  </header>
+
+  <section class="recap">
+    <h2>⏪ このページに必要な道具（前ページまでの復習）</h2>
+    <ul>
+      <li>M1: マイナスの掛け算＝反転、足し算＝歩き</li>
+      <li>M2: 回転の公式 x′ = x·cos θ − y·sin θ ／ y′ = x·sin θ + y·cos θ</li>
+      <li>M3: ベクトル＝数の組を1本の矢印として読む</li>
+    </ul>
+    <p class="recap-link"><a href="m2-trig.html">→ M2を読み直す</a> ／ <a href="m3-vector.html">→ M3を読み直す</a></p>
+  </section>
+
+  <section class="prose">
+
+    <h2>1. 種明かしの前に: M2の式をもう一度見る</h2>
+    <p>M2で読んだ回転の公式を思い出してください。</p>
+    <p style="text-align:center;font-family:Georgia,serif;font-size:1.15rem;">x′ = x·cos θ − y·sin θ ／ y′ = x·sin θ + y·cos θ</p>
+    <p>この2行、よく見ると<strong>まったく同じ形</strong>をしています。どちらも「元のxに何かを掛けたもの＋元のyに何かを掛けたもの」。違うのは<em>掛ける数（係数）が4つとも別</em>なことだけ。ならば、この4つの係数だけを抜き出して表に並べたら、式を毎回書かなくて済むのでは？――<strong>それが行列です。</strong>種明かしは、これで終わりです。</p>
+
+    <div class="symbol-intro">
+      <span class="sym">[ a b / c d ]</span>
+      <span class="desc"><b>2×2行列（にかけるにぎょうれつ）</b>。変換の係数4つを「上の行=新しいxのレシピ、下の行=新しいyのレシピ」の順に並べた表。a, b, c, dはそれぞれただの数。</span>
+    </div>
+
+    <h2>2. 行列×ベクトルの規則を「読み下す」</h2>
+    <p>行列をベクトル(x, y)に適用する（掛ける）規則は、次の1つだけです。</p>
+
+    <div class="formula" id="f-mat">
+      <span class="term" data-t="xp" data-c="c">x′</span> <span class="op">=</span> <span class="term" data-t="a" data-c="a">a</span><span class="op">·</span><span class="term" data-t="x" data-c="a">x</span> <span class="op">＋</span> <span class="term" data-t="b" data-c="b">b</span><span class="op">·</span><span class="term" data-t="y" data-c="b">y</span>
+      <br>
+      <span class="term" data-t="yp" data-c="c">y′</span> <span class="op">=</span> <span class="term" data-t="c" data-c="a">c</span><span class="op">·</span><span class="term" data-t="x" data-c="a">x</span> <span class="op">＋</span> <span class="term" data-t="d" data-c="b">d</span><span class="op">·</span><span class="term" data-t="y" data-c="b">y</span>
+    </div>
+    <p class="formula-read">新しいxは「aとxの積」と「bとyの積」の和。新しいyは「cとxの積」と「dとyの積」の和。つまり行列の上の行(a, b)は「新しいxの作り方メモ」、下の行(c, d)は「新しいyの作り方メモ」。</p>
+    <p class="formula-vals" id="v-mat"></p>
+
+    <p>本編第2章aで「レシピカード」と呼んでいたものの正体が、この<strong>作り方メモの束</strong>です。GPUはこのメモを全頂点に一斉適用していたのです（実際の3Dでは4×4=16個の数字になりますが、規則はこの2×2とまったく同じで、行が増えるだけです）。</p>
+
+    <h2>3. 行列は「空間の変形」そのもの ― 触って掴む</h2>
+    <p>a, b, c, dの4つの数字を変えると何が起きるのか。下のウィジェットは、1×1の正方形（と点）に行列を適用した結果を表示します。まずプリセットボタンを順に押して、<strong>4つの数字だけで「拡大」「回転」「せん断（斜め崩し）」「反転」がぜんぶ作れる</strong>ことを見てください。それからスライダーで自由にいじってください。</p>
+    <p>見るときのコツ: <strong>行列の1列目(a, c)は「横に1進む」の行き先、2列目(b, d)は「縦に1進む」の行き先</strong>です。ウィジェットの赤い矢印が1列目、緑の矢印が2列目。正方形はこの2本の矢印に張り付いて変形します。</p>
+  </section>
+
+  <div class="demo-title"><span class="badge">WIDGET 1</span><h3>行列変形ラボ ― 4つの数字で空間をこねる</h3></div>
+  <div class="panel math" id="m4a-app">
+    <div class="panel-controls" id="m4a-controls"></div>
+    <div class="panel-canvas" id="m4a-canvas"></div>
+  </div>
+  <div class="prose" id="calc1"></div>
+
+  <section class="prose">
+    <h2>4. 回転行列 ― M2との合流</h2>
+    <p>プリセットの「回転30°」を押したとき、a, b, c, dには cos30°, −sin30°, sin30°, cos30° が入っていました。つまり<strong>回転行列とは、M2の回転の公式の係数をそのまま表に写しただけのもの</strong>です。</p>
+
+    <div class="formula" id="f-rotmat">
+      回転行列 <span class="op">=</span> [ <span class="term" data-t="a" data-c="a">cos θ</span> <span class="term" data-t="b" data-c="b">−sin θ</span> / <span class="term" data-t="c" data-c="a">sin θ</span> <span class="term" data-t="d" data-c="b">cos θ</span> ]
+    </div>
+    <p class="formula-read">上の行（新xのレシピ）が「cos θとーsin θ」、下の行（新yのレシピ）が「sin θとcos θ」。M2の公式の4つの係数を並べただけ。</p>
+    <p class="formula-vals" id="v-rotmat"></p>
+
+    <p>下のウィジェットではθスライダーだけを回せます。4つの数字が単位円の値（M2）と連動して変わり、正方形が形を崩さずに回る――<strong>「回転は、4つの係数の連携プレーだった」</strong>ことが見えます。</p>
+  </section>
+
+  <div class="demo-title"><span class="badge">WIDGET 2</span><h3>回転行列マシン ― θを回すと4つの係数が連動する</h3></div>
+  <div class="panel math" id="m4b-app">
+    <div class="panel-controls" id="m4b-controls"></div>
+    <div class="panel-canvas" id="m4b-canvas"></div>
+  </div>
+  <div class="prose" id="calc2"></div>
+
+  <section class="prose">
+    <h2>5. 本編との答え合わせ</h2>
+    <p>これで本編の言葉をすべて数式側から言い直せます。</p>
+    <ul>
+      <li><strong>ワールド行列</strong>（本編ch2a）＝ Scale・Rotation・Positionの効果を係数に焼き込んだ作り方メモ。頂点全員に同じメモを適用する＝一斉に引っ越し</li>
+      <li><strong>ビュー行列</strong>（本編ch2b）＝「世界を逆向きに動かす」変換の係数メモ。カメラの位置と向きから作る</li>
+      <li><strong>「行列を掛ける」が速い理由</strong> ＝ 中身が掛け算と足し算だけの同じ形の計算で、GPUの「数千人の単純作業」（本編ch3b）に完璧に向いているから</li>
+    </ul>
+
+    <div class="misconception">
+      <p><strong>「行列は難解な数学的対象」</strong>――3DCGで使う範囲の行列は、「変換の係数を行ごとに並べた表」以上でも以下でもありません。学校で怖かった行列式や逆行列の計算術は、読めるようになる目的には不要です。<em>上の行は新xのレシピ、下の行は新yのレシピ。</em>これだけ持ち帰ってください。</p>
+    </div>
+
+    <div class="one-line">行列＝「新しい各成分の作り方メモ」を行ごとに並べた表。掛けるとは、メモ通りに混ぜること。</div>
+
+    <div class="exit-note">クライマックスを越えました。ここで止めても、本編の「レシピカード」はもう開けた後です。余力があれば、次のM5で「光の明るさが1つの掛け算になる」瞬間を見に行きましょう。<a href="../pages/ch2a-local-world.html">本編ch2aへ戻る</a></div>
+  </section>
+</article>
+
+<script type="module">
+  import { renderMathChrome, bindFormula, calcTime, mathCanvas, mSlider } from "../js/math-common.js";
+  renderMathChrome();
+
+  const D2R = Math.PI / 180;
+
+  function drawMatrixScene(api, m, pt, hover) {
+    api.grid();
+    const { ctx, toPx } = api;
+    const T = (x, y) => [m.a * x + m.b * y, m.c * x + m.d * y];
+    // 変形後の正方形
+    const corners = [[0, 0], [1, 0], [1, 1], [0, 1]].map(([x, y]) => T(x, y));
+    ctx.beginPath();
+    corners.forEach((p, i) => {
+      const [px, py] = toPx(p[0], p[1]);
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    });
+    ctx.closePath();
+    ctx.fillStyle = "rgba(95,180,255,0.14)";
+    ctx.fill();
+    ctx.strokeStyle = "#5fb4ff";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // 元の正方形（薄く）
+    ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = "rgba(255,255,255,0.25)";
+    ctx.strokeRect(...toPx(0, 1), toPx(1, 0)[0] - toPx(0, 0)[0], toPx(0, 0)[1] - toPx(0, 1)[1]);
+    ctx.setLineDash([]);
+    // 基底ベクトル: 1列目(a,c)=横1の行き先, 2列目(b,d)=縦1の行き先
+    api.arrow(0, 0, m.a, m.c, "#ff9e9e", 4, hover === "a" || hover === "c");
+    api.label("1列目 (a, c)", m.a, m.c, "#ff9e9e", 10, -10);
+    api.arrow(0, 0, m.b, m.d, "#8ce8b0", 4, hover === "b" || hover === "d");
+    api.label("2列目 (b, d)", m.b, m.d, "#8ce8b0", 10, 22);
+    // 点の変換
+    if (pt) {
+      const [qx, qy] = T(pt.x, pt.y);
+      api.dot(pt.x, pt.y, "#7cc4ff", 7, hover === "x" || hover === "y");
+      api.label(`(x, y)=(${pt.x.toFixed(1)}, ${pt.y.toFixed(1)})`, pt.x, pt.y, "#7cc4ff", 10, -12);
+      api.dot(qx, qy, "#ffcf5f", 7, hover === "xp" || hover === "yp");
+      api.label(`(x′, y′)=(${qx.toFixed(2)}, ${qy.toFixed(2)})`, qx, qy, "#ffcf5f", 10, 26);
+      api.dashed(pt.x, pt.y, qx, qy, "rgba(255,207,95,0.5)");
+    }
+  }
+
+  // ---- W1: 行列変形ラボ ----
+  const M = { a: 1, b: 0, c: 0, d: 1 };
+  const P = { x: 1.5, y: 0.8 };
+  const vMat = document.getElementById("v-mat");
+  const w1 = mathCanvas(document.getElementById("m4a-canvas"), {
+    range: 2.6,
+    draw(api) {
+      drawMatrixScene(api, M, P, api.hover);
+      const xp = M.a * P.x + M.b * P.y, yp = M.c * P.x + M.d * P.y;
+      vMat.textContent = `x′ = ${M.a.toFixed(2)}×${P.x.toFixed(1)} ＋ ${M.b.toFixed(2)}×${P.y.toFixed(1)} = ${xp.toFixed(2)} ／ y′ = ${M.c.toFixed(2)}×${P.x.toFixed(1)} ＋ ${M.d.toFixed(2)}×${P.y.toFixed(1)} = ${yp.toFixed(2)}`;
+    },
+  });
+  const c1 = document.getElementById("m4a-controls");
+  const sliders = {};
+  [["a", "a（新xに効く、元xの係数）"], ["b", "b（新xに効く、元yの係数）"], ["c", "c（新yに効く、元xの係数）"], ["d", "d（新yに効く、元yの係数）"]].forEach(([k, label]) => {
+    sliders[k] = mSlider(c1, { label, min: -2, max: 2, step: 0.05, value: M[k], format: (v) => v.toFixed(2), onInput: (v) => { M[k] = v; w1.render(); } });
+  });
+  function setMatrix(a, b, c, d) {
+    Object.assign(M, { a, b, c, d });
+    for (const k of ["a", "b", "c", "d"]) {
+      sliders[k].value = String(M[k]);
+      sliders[k].dispatchEvent(new Event("input"));
+    }
+  }
+  const presets = document.createElement("div");
+  presets.className = "vgroup";
+  presets.innerHTML = `<div class="vgroup-title">プリセット</div>`;
+  [["恒等（何もしない）", [1, 0, 0, 1]],
+   ["拡大 ×1.5", [1.5, 0, 0, 1.5]],
+   ["回転 30°", [Math.cos(30 * D2R), -Math.sin(30 * D2R), Math.sin(30 * D2R), Math.cos(30 * D2R)]],
+   ["せん断（斜め崩し）", [1, 0.6, 0, 1]],
+   ["左右反転", [-1, 0, 0, 1]]].forEach(([name, m]) => {
+    const b = document.createElement("button");
+    b.textContent = name;
+    b.addEventListener("click", () => setMatrix(...m));
+    presets.appendChild(b);
+  });
+  c1.appendChild(presets);
+  c1.insertAdjacentHTML("beforeend",
+    `<p style="font-size:0.78rem;color:var(--muted);margin:0;">青い点(x, y)はドラッグ可能。赤い矢印=1列目(a,c)、緑の矢印=2列目(b,d)。正方形はこの2本に張り付いて変形します。</p>`);
+  bindFormula("#f-mat", w1);
+  w1.canvas.addEventListener("pointerdown", (e) => {
+    const move = (ev) => { const [wx, wy] = w1.toWorld(ev.clientX, ev.clientY); P.x = Math.max(-2.4, Math.min(2.4, wx)); P.y = Math.max(-2.4, Math.min(2.4, wy)); w1.render(); };
+    move(e);
+    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  });
+
+  calcTime("#calc1", {
+    q: "行列 [ a=0, b=−1 / c=1, d=0 ] を点 (2, 1) に適用すると (x′, y′) は？（読み下し: 新x = 0×2 ＋ (−1)×1、新y = 1×2 ＋ 0×1）",
+    prefix: "(x′, y′) = (", suffix: ")", answer: [-1, 2],
+    okText: "(−1, 2)。実はこれ、90°回転の行列（cos90°=0, sin90°=1）でした。M2の電卓タイムと同じ答えになっています。",
+    hint: "上の行(0, −1)が新xのレシピ、下の行(1, 0)が新yのレシピ。メモ通りに混ぜるだけ。",
+  });
+
+  // ---- W2: 回転行列マシン ----
+  const s2 = { th: 30 };
+  const vRM = document.getElementById("v-rotmat");
+  const matDisplay = document.createElement("div");
+  const w2 = mathCanvas(document.getElementById("m4b-canvas"), {
+    range: 2.2,
+    draw(api) {
+      const c = Math.cos(s2.th * D2R), s = Math.sin(s2.th * D2R);
+      drawMatrixScene(api, { a: c, b: -s, c: s, d: c }, null, api.hover);
+      vRM.textContent = `θ = ${s2.th}° → [ ${c.toFixed(2)}  ${(-s).toFixed(2)} / ${s.toFixed(2)}  ${c.toFixed(2)} ]`;
+      matDisplay.innerHTML = `<div class="vgroup"><div class="vgroup-title">今の行列の中身</div>
+        <table style="font-family:Georgia,serif;font-size:1.25rem;margin:0 auto;border-collapse:collapse;">
+          <tr><td style="padding:4px 14px;color:#ff9e9e;">${c.toFixed(2)}</td><td style="padding:4px 14px;color:#8ce8b0;">${(-s).toFixed(2)}</td></tr>
+          <tr><td style="padding:4px 14px;color:#ff9e9e;">${s.toFixed(2)}</td><td style="padding:4px 14px;color:#8ce8b0;">${c.toFixed(2)}</td></tr>
+        </table>
+        <div style="font-size:0.72rem;color:var(--muted);text-align:center;">左列=(a, c)＝赤い矢印 ／ 右列=(b, d)＝緑の矢印</div></div>`;
+    },
+  });
+  mSlider("#m4b-controls", { label: "回転角 θ", min: -180, max: 180, step: 5, value: s2.th, format: (v) => `${v}°`, onInput: (v) => { s2.th = v; w2.render(); } });
+  document.getElementById("m4b-controls").append(matDisplay);
+  document.getElementById("m4b-controls").insertAdjacentHTML("beforeend",
+    `<p style="font-size:0.78rem;color:var(--muted);margin:0;">θを回すと、4つの係数が単位円の値（M2）に従って連動し、正方形が形を保ったまま回ります。</p>`);
+  bindFormula("#f-rotmat", w2);
+
+  calcTime("#calc2", {
+    q: "θ = 0°（回さない）のとき、回転行列の4つの数字は？（cos0°=1, sin0°=0）",
+    prefix: "[ a, b, c, d ] = [", suffix: "]", answer: [1, 0, 0, 1],
+    okText: "[1, 0 / 0, 1]。プリセットの「恒等（何もしない）」と同じ。回さない回転行列は、何もしない行列です。",
+    hint: "cos0°=1、sin0°=0を [cos −sin / sin cos] に入れるだけ。",
+  });
+</script>
+</body>
+</html>

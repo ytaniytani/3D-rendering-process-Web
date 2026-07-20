@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>M6: 投影の式 | 3DCG描画のしくみ</title>
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+<body>
+
+<article class="lesson">
+  <header class="lesson-head">
+    <p class="lesson-no">数学トラック M6（7ページ中の7ページ目・最終ページ）</p>
+    <h1>投影の式 ― 「遠くが小さい」は、わり算1回だった</h1>
+    <p class="lesson-sub">本編ch2cで見た「視錐台の押し潰し」。プロジェクション行列という大げさな名前の裏にある本質は、拍子抜けするほど短い式です。</p>
+  </header>
+
+  <section class="recap">
+    <h2>⏪ このページに必要な道具</h2>
+    <ul>
+      <li>本編<a href="../pages/ch2c-projection.html">第2章c</a>: 視錐台を直方体に押し潰すと、奥のものほど縮む＝遠近感</li>
+      <li>M1: わり算を含む式の読み下し（新しい道具はほぼ要りません）</li>
+    </ul>
+  </section>
+
+  <section class="prose">
+
+    <h2>1. 状況設定: 横から見た世界</h2>
+    <p>話を一番単純な形にします。カメラを原点に置いて、世界を<strong>真横から</strong>見た断面図で考えます。カメラの前方1の位置に、透明な「スクリーン」が立っているとイメージしてください。3Dの点から出た光がカメラ（原点）に向かってまっすぐ飛んでくる途中で、このスクリーンを<strong>どの高さで突き抜けるか</strong>――それがその点の「画面上の位置」です。</p>
+
+    <div class="symbol-intro">
+      <span class="sym">z</span>
+      <span class="desc"><b>ゼット</b>。ここではカメラからの<b>奥行き（前方への距離）</b>を表す。z = 2なら「カメラの2つ先」。本編ch2bのビュー空間の奥行きと同じもの。</span>
+    </div>
+
+    <h2>2. 式はこれだけ</h2>
+
+    <div class="formula" id="f-proj">
+      <span class="term" data-t="sx" data-c="c">画面上の高さ</span> <span class="op">=</span> <span class="frac"><span><span class="term" data-t="x" data-c="a">実際の高さ x</span></span><span><span class="term" data-t="z" data-c="b">奥行き z</span></span></span>
+    </div>
+    <p class="formula-read">画面に映る高さは、実際の高さを、奥行きで割ったもの。</p>
+    <p class="formula-vals" id="v-proj"></p>
+
+    <p>なぜ割り算になるのか。光は点からカメラ（原点）まで<strong>まっすぐ</strong>飛びます。まっすぐな線の上では、「高さと奥行きの比率」がどこでも一定です（比例。中学のグラフのあの話です）。点の位置での比率は x/z。スクリーンは奥行き1の場所にあるので、そこでの高さは x/z × 1 ＝ <strong>x/z</strong>。おしまいです。</p>
+    <p>この式が「遠くが小さい」のすべてを説明します。<strong>同じ高さxでも、zが2倍になれば画面上の高さは半分。zが10倍なら1/10。</strong>分母が大きくなるほど結果が縮む――割り算の当たり前の性質が、遠近感の正体です。</p>
+    <p>下のウィジェットで点をドラッグしてください。式の「実際の高さx」「奥行きz」「画面上の高さ」にマウスを乗せると、断面図の対応する部分（点の高さ・距離・スクリーン上の交点）が光ります。</p>
+  </section>
+
+  <div class="demo-title"><span class="badge">WIDGET 1</span><h3>投影断面図 ― 光の直線とスクリーンの交点</h3></div>
+  <div class="panel math" id="m6a-app">
+    <div class="panel-controls" id="m6a-controls"></div>
+    <div class="panel-canvas" id="m6a-canvas"></div>
+  </div>
+  <div class="prose" id="calc1"></div>
+
+  <section class="prose">
+    <h2>3. 同じ大きさの物が、距離で縮んでいく</h2>
+    <p>今度は「高さ1の棒」を何本か、違う奥行きに立てて全部を同時に投影してみます。実物はすべて同じ高さなのに、画面上のサイズは 1/z のカーブに沿ってすぼんでいく。<strong>電柱の並ぶ道路の写真で、遠くの電柱ほど小さく写る、あの現象を式で再現したもの</strong>です。</p>
+    <p>zスライダーで棒の間隔を変えたり、棒を追加したりして、「画面サイズ = 1/z」の減り方（最初は急激に、遠くなるほどゆるやかに縮む）を体感してください。</p>
+  </section>
+
+  <div class="demo-title"><span class="badge">WIDGET 2</span><h3>電柱の実験 ― 同じ高さの棒が 1/z で縮む</h3></div>
+  <div class="panel math" id="m6b-app">
+    <div class="panel-controls" id="m6b-controls"></div>
+    <div class="panel-canvas" id="m6b-canvas"></div>
+  </div>
+  <div class="prose" id="calc2"></div>
+
+  <section class="prose">
+    <h2>4. プロジェクション行列との関係 ― 大げさな名前の中身</h2>
+    <p>「え、本編ではプロジェクション<strong>行列</strong>って言ってたのに、割り算1個なの？」――いい疑問です。実情はこうです。</p>
+    <ul>
+      <li>本質の操作は<strong>「zで割る」</strong>。これがすべての遠近感を生む</li>
+      <li>ただし行列（M4）は掛け算と足し算しかできない道具なので、割り算を直接は書けない</li>
+      <li>そこでGPUは、行列には「後でzで割ってね」という<strong>予約情報</strong>を仕込むだけにして、行列適用の直後に<strong>全頂点を一斉にzで割る</strong>専用ステップ（遠近除算）を置いている</li>
+      <li>FOVやNear/Far（本編ch2c）の設定は、この行列部分の係数として焼き込まれる</li>
+    </ul>
+    <p>つまり「プロジェクション行列」という言葉の実体は、<strong>行列による下準備 ＋ zでの割り算</strong>のセットです。遠近感を作っている主役は、あくまで最後の割り算のほう。名前の仰々しさに惑わされる必要はありません。</p>
+
+    <div class="misconception">
+      <p><strong>「遠近感は高度な光学シミュレーションの結果」</strong>――カメラのレンズを物理的に再現しているわけではありません。やっているのは x/z、y/z という2回の割り算だけ。この割り算が毎フレーム・全頂点に走った結果が、あの自然な遠近感です。</p>
+    </div>
+
+    <div class="one-line">遠くが小さいのは「奥行きで割る」から。プロジェクション行列は、その割り算の下準備にすぎない。</div>
+
+    <h2>5. 数学トラック、完走です</h2>
+    <p>7ページを通じて、あなたは本編の言葉を数式で言い直せるようになりました。</p>
+    <ul>
+      <li>Position（移動）→ <strong>x′ = x + d</strong>（M1）</li>
+      <li>Scale（拡大・反転）→ <strong>x′ = k·x</strong>（M1）</li>
+      <li>Rotation（回転）→ <strong>sin / cosの連携</strong>（M2）</li>
+      <li>頂点・法線 → <strong>ベクトル</strong>、法線は長さ1（M3）</li>
+      <li>レシピカード → <strong>行列＝作り方メモの表</strong>（M4）</li>
+      <li>明るさ → <strong>max(0, n·l)</strong>（M5）</li>
+      <li>遠近感 → <strong>x/z</strong>（M6）</li>
+    </ul>
+    <p>シェーダーの入門書やTAの資料を開いたとき、これらの式はもう「知らない記号の壁」ではなく「読める文章」のはずです。ここから先は、実物（Unity / UE / シェーダー）で手を動かす番です。おつかれさまでした。</p>
+
+    <div class="exit-note"><a href="../index.html">表紙（学習マップ）に戻る</a> ／ <a href="../pages/ch7-summary.html">本編第7章（まとめ）を読み直す</a></div>
+  </section>
+</article>
+
+<script type="module">
+  import { renderMathChrome, bindFormula, calcTime, mathCanvas, mSlider } from "../js/math-common.js";
+  renderMathChrome();
+
+  // ---- W1: 投影断面図 ----
+  // 座標系: 横軸=奥行きz(右がプラス), 縦軸=高さx
+  const s1 = { z: 3, x: 1.8 };
+  const vP = document.getElementById("v-proj");
+  const w1 = mathCanvas(document.getElementById("m6a-canvas"), {
+    range: 3.6,
+    draw(api) {
+      api.grid();
+      const { ctx, toPx, hover } = api;
+      // カメラ（原点）
+      api.dot(0, 0, "#e8eaf0", 7);
+      api.label("カメラ", 0, 0, "#e8eaf0", -28, 26);
+      // スクリーン（z=1の縦線）
+      const [sxp] = toPx(1, 0);
+      ctx.strokeStyle = hover === "sx" ? "#8ce8b0" : "#39404e";
+      ctx.lineWidth = hover === "sx" ? 5 : 3;
+      ctx.beginPath(); ctx.moveTo(sxp, 0); ctx.lineTo(sxp, api.canvas.height); ctx.stroke();
+      api.label("スクリーン (z=1)", 1, 3.1, "#7a8393", -30, 0);
+      // 点
+      api.dot(s1.z, s1.x, "#7cc4ff", 9, hover === "x" || hover === "z");
+      api.label(`点 (z=${s1.z.toFixed(1)}, 高さ=${s1.x.toFixed(1)})`, s1.z, s1.x, "#7cc4ff", 12, -12);
+      // 高さと奥行きの補助線
+      api.dashed(s1.z, s1.x, s1.z, 0, "#7cc4ff", hover === "x");
+      api.dashed(s1.z, 0, 0, 0, "#ffbe7c", hover === "z");
+      // 光の直線
+      ctx.strokeStyle = "rgba(255,207,95,0.8)";
+      ctx.lineWidth = 2;
+      const [px, py] = toPx(s1.z, s1.x);
+      const [oxp, oyp] = toPx(0, 0);
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(oxp, oyp); ctx.stroke();
+      // スクリーン上の交点
+      const sx = s1.x / s1.z;
+      api.dot(1, sx, "#8ce8b0", 9, hover === "sx");
+      api.label(`画面上の高さ = ${sx.toFixed(2)}`, 1, sx, "#8ce8b0", 14, 22);
+      vP.textContent = `= ${s1.x.toFixed(1)} ÷ ${s1.z.toFixed(1)} = ${sx.toFixed(2)}`;
+    },
+  });
+  document.getElementById("m6a-controls").insertAdjacentHTML("beforeend",
+    `<p style="font-size:0.78rem;color:var(--muted);margin:0 0 0.4rem;">青い点をドラッグ。①同じ高さのまま奥（右）へ動かす→緑の交点が下がる（小さく映る）。②同じ奥行きで上へ→交点も上がる。黄色の線が「光の直線」です。</p>`);
+  mSlider("#m6a-controls", { label: "奥行き z", min: 1.2, max: 3.4, step: 0.1, value: s1.z, onInput: (v) => { s1.z = v; w1.render(); } });
+  mSlider("#m6a-controls", { label: "実際の高さ x", min: -3, max: 3, step: 0.1, value: s1.x, onInput: (v) => { s1.x = v; w1.render(); } });
+  bindFormula("#f-proj", w1);
+  w1.canvas.addEventListener("pointerdown", (e) => {
+    const move = (ev) => { const [wz, wx] = w1.toWorld(ev.clientX, ev.clientY); s1.z = Math.max(1.2, Math.min(3.4, wz)); s1.x = Math.max(-3, Math.min(3, wx)); w1.render(); };
+    move(e);
+    const up = () => { window.removeEventListener("pointermove", move); window.removeEventListener("pointerup", up); };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  });
+
+  calcTime("#calc1", {
+    q: "高さ4の点が、奥行きz = 2にあるとき、画面上の高さは？",
+    prefix: "画面上の高さ =", answer: 2,
+    okText: "4 ÷ 2 = 2。zが2倍なら半分に映る。遠近感は割り算です。",
+    hint: "式は「実際の高さ ÷ 奥行き」。4 ÷ 2。",
+  });
+
+  // ---- W2: 電柱の実験 ----
+  const s2 = { count: 6, gap: 1.0 };
+  const w2 = mathCanvas(document.getElementById("m6b-canvas"), {
+    range: 3.6,
+    draw(api) {
+      const { ctx, toPx } = api;
+      ctx.clearRect(0, 0, api.canvas.width, api.canvas.height);
+      ctx.fillStyle = "#05060a"; ctx.fillRect(0, 0, api.canvas.width, api.canvas.height);
+      // 左半分: 断面図（実世界） / 右半分: 画面に映るサイズ
+      const W = api.canvas.width, H = api.canvas.height;
+      const midX = W * 0.55;
+      ctx.strokeStyle = "#2a2f3a"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(midX, 0); ctx.lineTo(midX, H); ctx.stroke();
+      ctx.fillStyle = "#7a8393"; ctx.font = "13px sans-serif";
+      ctx.fillText("実世界（すべて同じ高さ1の棒）", 20, 24);
+      ctx.fillText("画面に映る高さ = 1 ÷ z", midX + 20, 24);
+
+      const groundY = H * 0.72;
+      // 実世界の棒
+      const unitH = H * 0.28;
+      const startX = 40;
+      const pxGap = (midX - 90) / (s2.count * s2.gap + 1);
+      for (let i = 0; i < s2.count; i++) {
+        const z = 1 + i * s2.gap;
+        const bx = startX + (z - 1) * pxGap;
+        ctx.strokeStyle = "#7cc4ff"; ctx.lineWidth = 7;
+        ctx.beginPath(); ctx.moveTo(bx, groundY); ctx.lineTo(bx, groundY - unitH); ctx.stroke();
+        ctx.fillStyle = "#5b6473"; ctx.font = "11px sans-serif";
+        ctx.fillText(`z=${z.toFixed(1)}`, bx - 14, groundY + 16);
+      }
+      ctx.strokeStyle = "#39404e"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(20, groundY); ctx.lineTo(midX - 20, groundY); ctx.stroke();
+
+      // 画面上のサイズ（1/z）
+      const startX2 = midX + 40;
+      const pxGap2 = (W - midX - 80) / s2.count;
+      for (let i = 0; i < s2.count; i++) {
+        const z = 1 + i * s2.gap;
+        const h = unitH / z;
+        const bx = startX2 + i * pxGap2;
+        ctx.strokeStyle = "#8ce8b0"; ctx.lineWidth = 7;
+        ctx.beginPath(); ctx.moveTo(bx, groundY); ctx.lineTo(bx, groundY - h); ctx.stroke();
+        ctx.fillStyle = "#5b6473"; ctx.font = "11px sans-serif";
+        ctx.fillText((1 / z).toFixed(2), bx - 12, groundY - h - 8);
+      }
+      ctx.strokeStyle = "#39404e"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(midX + 20, groundY); ctx.lineTo(W - 20, groundY); ctx.stroke();
+      // 1/z カーブ
+      ctx.strokeStyle = "rgba(140,232,176,0.4)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (let i = 0; i <= 100; i++) {
+        const t = i / 100;
+        const z = 1 + t * (s2.count - 1) * s2.gap;
+        const bx = startX2 + t * (s2.count - 1) * pxGap2;
+        const y = groundY - unitH / z;
+        i === 0 ? ctx.moveTo(bx, y) : ctx.lineTo(bx, y);
+      }
+      ctx.stroke();
+    },
+  });
+  mSlider("#m6b-controls", { label: "棒の本数", min: 3, max: 10, step: 1, value: s2.count, onInput: (v) => { s2.count = v; w2.render(); } });
+  mSlider("#m6b-controls", { label: "棒の間隔（奥行き方向）", min: 0.4, max: 2, step: 0.1, value: s2.gap, onInput: (v) => { s2.gap = v; w2.render(); } });
+  document.getElementById("m6b-controls").insertAdjacentHTML("beforeend",
+    `<p style="font-size:0.78rem;color:var(--muted);margin:0;">左: 実世界ではすべて同じ高さ。右: 画面上では1/zで縮む。緑のカーブが「最初は急に、遠くではゆるやかに」縮む1/zの形です。</p>`);
+
+  calcTime("#calc2", {
+    q: "z = 4 にある高さ1の電柱は、画面上ではいくつの高さに映る？",
+    prefix: "画面上の高さ =", answer: 0.25,
+    okText: "1 ÷ 4 = 0.25。4倍遠いと1/4。写真の中の遠くの電柱と同じです。",
+    hint: "1 ÷ 4 を小数で。",
+  });
+</script>
+</body>
+</html>
