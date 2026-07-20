@@ -123,9 +123,27 @@ export function initSection4() {
   const wastedLabel = el("div", { style: "font-size:0.85rem;" }, "無駄なピクセル計算: 0 回");
   const usefulLabel = el("div", { style: "font-size:0.78rem;color:var(--muted);" }, "有効な描画: 0 回");
 
+  // 画面全体で見た「総仕事量」の目安（近景=シルエットが大きい=有効ピクセルが多い／遠景=シルエットが小さい=有効ピクセルが少ない）
+  // ※ ここでの「無駄率メーター」とは向きが逆になることをそのまま見せるための概算値であり、厳密なピクセル数ではない。
+  const totalWorkMeter = meter(0);
+  const totalWorkLabel = el("div", { style: "font-size:0.78rem;color:var(--muted);" }, "");
+
+  function silhouettePixelsEstimate(d) {
+    // d: 0(近景, 画面いっぱい) - 100(遠景, 米粒)
+    const t = d / 100;
+    return Math.round(250000 * (1 - t) ** 2 + 20 * t);
+  }
+
   function updateMeter() {
+    // このクアッド1か所だけの無駄率（重複が積み重なるほど酷くなる、という局所指標）
     const pct = Math.min(100, (triCount / 140) * 100);
     loadMeter.setValue(pct);
+
+    // 画面全体で見た総仕事量（こちらは近景ほど大きい＝上とは逆の傾向）
+    const px = silhouettePixelsEstimate(distance);
+    const workPct = Math.min(100, (px / 250000) * 100);
+    totalWorkMeter.setValue(workPct);
+    totalWorkLabel.textContent = `有効ピクセル数の目安: 約 ${px.toLocaleString()} 個（画面全体でのおおよその値）`;
   }
 
   const distSlider = slider({
@@ -167,10 +185,19 @@ export function initSection4() {
   stepBtn.id = "sec4-step";
   controlsHost.appendChild(stepBtn);
   controlsHost.appendChild(el("div", { class: "vgroup" }, [
-    el("div", { class: "vgroup-title" }, "GPU負荷メーター"),
+    el("div", { class: "vgroup-title" }, "① この一角の無駄率（オーバードローの酷さ）"),
     loadMeter,
     wastedLabel,
     usefulLabel,
+    el("p", { style: "font-size:0.7rem;color:var(--muted);margin:0.3rem 0 0;" },
+      "※ 画面全体のGPU負荷ではなく、このクアッド1か所だけを取り出した無駄の割合です。"),
+  ]));
+  controlsHost.appendChild(el("div", { class: "vgroup" }, [
+    el("div", { class: "vgroup-title" }, "② 画面全体で見た総仕事量の目安（①とは逆の傾向）"),
+    totalWorkMeter,
+    totalWorkLabel,
+    el("p", { style: "font-size:0.7rem;color:var(--muted);margin:0.3rem 0 0;" },
+      "近景は無駄率が低くても総量が莫大、遠景は総量こそ小さいが無駄率が極悪。問題は「絶対的な重さ」ではなく「見た目の小ささに見合わない不当なコスト」です。"),
   ]));
 
   function play() {
